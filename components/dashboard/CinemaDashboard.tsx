@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
-  Search,
   Plus,
   Sparkles,
   Play,
@@ -19,26 +18,19 @@ import CreateRoomModal from "./CreateRoomModal";
 import NocturneLogo from "../cinema/NocturneLogo";
 import Avatar3DViewer from "./Avatar3DViewer";
 import CinemaExperience from "../cinema/CinemaExperience";
-import { AUDITORIUM_THEMES, CURATED_FILM_PRESETS } from "@/lib/data/cinemaRooms";
 import "../../src/dashboard.css";
-
-type CatalogView = "all" | "rooms" | "reels";
 
 export default function CinemaDashboard() {
   const [avatar, setAvatar] = useState<AvatarConfig>(() => loadSavedAvatar());
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
-  const [selectedRoomTheme, setSelectedRoomTheme] = useState<string>("velvet");
   const [promptInput, setPromptInput] = useState("");
   const [promptError, setPromptError] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [catalogView, setCatalogView] = useState<CatalogView>("all");
   const [activeTab, setActiveTab] = useState("home");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showCinemaRoom, setShowCinemaRoom] = useState(false);
   const [activeFilmUrl, setActiveFilmUrl] = useState("");
 
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -50,22 +42,6 @@ export default function CinemaDashboard() {
       setPromptError("");
     }
   }, [promptInput, promptError]);
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        if (window.innerWidth <= 640) {
-          setMobileMenuOpen(true);
-        }
-        window.requestAnimationFrame(() => {
-          searchInputRef.current?.focus();
-        });
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
 
   const handleLaunchCinemaWithFilm = (url: string, _title?: string) => {
     setActiveFilmUrl(url);
@@ -102,38 +78,10 @@ export default function CinemaDashboard() {
     setPromptInput("");
   };
 
-  const openRoomModalForTheme = (themeId?: string) => {
-    if (themeId) setSelectedRoomTheme(themeId);
+  const openRoomModal = () => {
     setMobileMenuOpen(false);
     setIsCreateRoomOpen(true);
   };
-
-  const filteredRooms = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return AUDITORIUM_THEMES;
-    return AUDITORIUM_THEMES.filter(
-      (r) =>
-        r.name.toLowerCase().includes(q) ||
-        r.desc.toLowerCase().includes(q) ||
-        r.badge.toLowerCase().includes(q)
-    );
-  }, [searchQuery]);
-
-  const filteredReels = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return CURATED_FILM_PRESETS;
-    return CURATED_FILM_PRESETS.filter(
-      (p) =>
-        p.title.toLowerCase().includes(q) ||
-        p.genre.toLowerCase().includes(q) ||
-        p.duration.toLowerCase().includes(q)
-    );
-  }, [searchQuery]);
-
-  const showRooms = catalogView === "all" || catalogView === "rooms";
-  const showReels = catalogView === "all" || catalogView === "reels";
-  const visibleCount =
-    (showRooms ? filteredRooms.length : 0) + (showReels ? filteredReels.length : 0);
 
   if (showCinemaRoom) {
     return (
@@ -186,33 +134,6 @@ export default function CinemaDashboard() {
           </div>
 
           <div className="dash-topbar-right">
-            <div className="dash-search-wrap">
-              <Search size={15} className="dash-search-icon" aria-hidden="true" />
-              <input
-                ref={searchInputRef}
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                aria-label="Search auditoriums and test reels"
-                placeholder="Search rooms or reels…"
-                className="dash-search-input"
-              />
-              {searchQuery ? (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="dash-search-clear"
-                  aria-label="Clear search"
-                >
-                  <X size={14} aria-hidden="true" />
-                </button>
-              ) : (
-                <kbd className="dash-search-kbd" aria-hidden="true">
-                  ⌘K
-                </kbd>
-              )}
-            </div>
-
             <button
               type="button"
               onClick={() => setIsCreateRoomOpen(true)}
@@ -252,27 +173,6 @@ export default function CinemaDashboard() {
           id="dash-mobile-drawer"
           className={`dash-mobile-drawer ${mobileMenuOpen ? "is-open" : ""}`}
         >
-          <div className="dash-input-wrap">
-            <Search size={15} className="dash-input-icon" aria-hidden="true" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              aria-label="Filter auditoriums and reels"
-              placeholder="Search rooms or reels…"
-              className="dash-input dash-input--with-icon dash-input--with-clear"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="dash-search-clear"
-                aria-label="Clear search"
-              >
-                <X size={14} aria-hidden="true" />
-              </button>
-            )}
-          </div>
           <div className="dash-mobile-actions">
             <button
               type="button"
@@ -287,7 +187,7 @@ export default function CinemaDashboard() {
             </button>
             <button
               type="button"
-              onClick={() => openRoomModalForTheme()}
+              onClick={() => openRoomModal()}
               className="dash-nav-btn"
             >
               Create room
@@ -314,7 +214,7 @@ export default function CinemaDashboard() {
                 Screening room
               </h1>
               <p className="dash-subtitle">
-                Paste a film link to open your auditorium, configure room seating, or launch a curated reel.
+                Paste a film link to open your auditorium or configure room seating and audio.
               </p>
             </div>
 
@@ -333,7 +233,7 @@ export default function CinemaDashboard() {
                     handlePromptSubmit();
                   }
                 }}
-                rows={2}
+                rows={3}
                 aria-invalid={Boolean(promptError)}
                 aria-describedby="film-launch-help"
                 placeholder="Paste a YouTube, Vimeo, or MP4 film link, or enter a title…"
@@ -344,7 +244,7 @@ export default function CinemaDashboard() {
                 <div className="dash-launcher-meta">
                   <button
                     type="button"
-                    onClick={() => openRoomModalForTheme()}
+                    onClick={() => openRoomModal()}
                     className="dash-btn dash-btn--quiet"
                     title="Attach film or configure room"
                   >
@@ -370,120 +270,6 @@ export default function CinemaDashboard() {
                 </button>
               </div>
             </form>
-
-            <section className="dash-catalog" aria-labelledby="catalog-heading">
-              <div className="dash-catalog-head">
-                <h2 id="catalog-heading" className="dash-section-heading">
-                  Auditoriums and repertoire
-                </h2>
-
-                <div className="dash-tabs" role="tablist" aria-label="Filter catalog view">
-                  {(
-                    [
-                      { id: "all", label: "All" },
-                      { id: "rooms", label: "Auditoriums" },
-                      { id: "reels", label: "Test reels" },
-                    ] as const
-                  ).map((tab) => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={catalogView === tab.id}
-                      onClick={() => setCatalogView(tab.id)}
-                      className="dash-tab"
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {visibleCount === 0 ? (
-                <div className="dash-empty">
-                  <p className="dash-empty-title">No auditoriums or reels match “{searchQuery.trim()}”.</p>
-                  <p className="dash-empty-desc">
-                    Clear the search filter to browse all four auditorium presets and five test reels.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="dash-btn dash-btn--secondary"
-                  >
-                    Clear search
-                  </button>
-                </div>
-              ) : (
-                <>
-                  {showRooms && filteredRooms.length > 0 && (
-                    <div className="dash-rooms-grid" aria-label="Auditorium themes">
-                      {filteredRooms.map((room) => (
-                        <button
-                          key={room.id}
-                          type="button"
-                          onClick={() => openRoomModalForTheme(room.id)}
-                          className="dash-room-btn"
-                        >
-                          <div className="dash-room-top">
-                            <span className="dash-room-name">{room.name}</span>
-                            <span className="dash-room-badge">{room.badge}</span>
-                          </div>
-                          <p className="dash-room-desc">{room.desc}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {showReels && filteredReels.length > 0 && (
-                    <div className="dash-table-wrap">
-                      <table className="dash-table">
-                        <thead>
-                          <tr>
-                            <th scope="col">Test reel</th>
-                            <th scope="col">Genre</th>
-                            <th scope="col">Format</th>
-                            <th scope="col" className="dash-table-actions">
-                              Action
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredReels.map((preset) => (
-                            <tr key={preset.id}>
-                              <td className="dash-table-title">{preset.title}</td>
-                              <td data-label="Genre">{preset.genre}</td>
-                              <td data-label="Format" className="dash-num">{preset.duration}</td>
-                              <td className="dash-table-actions">
-                                <div className="dash-row-actions">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setPromptInput(preset.url);
-                                      setPromptError("");
-                                      promptInputRef.current?.focus();
-                                    }}
-                                    className="dash-btn dash-btn--quiet"
-                                  >
-                                    Load
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleLaunchCinemaWithFilm(preset.url, preset.title)}
-                                    className="dash-btn dash-btn--secondary"
-                                  >
-                                    Enter
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </>
-              )}
-            </section>
           </section>
 
           <aside className="dash-avatar-panel" aria-labelledby="avatar-stage-heading">
@@ -533,7 +319,6 @@ export default function CinemaDashboard() {
         onClose={() => setIsCreateRoomOpen(false)}
         onLaunchRoom={handleLaunchRoomFromModal}
         defaultFilmUrl={activeFilmUrl || promptInput.trim()}
-        defaultThemeId={selectedRoomTheme}
       />
     </div>
   );
