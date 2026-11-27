@@ -73,42 +73,41 @@ export default function CinematicTicket({
             <div className="ticket-brand-mark">
               <NocturneLogo size={28} className="ticket-emblem" glow={false} />
               <div className="ticket-brand-text">
-                <span className="brand-name">NOCTURNE</span>
-                <span className="brand-sub">PRIVATE ADMISSION</span>
+                <span className="brand-name">Nocturne</span>
+                <span className="brand-sub">Private admission</span>
               </div>
             </div>
             <div className="ticket-badge-pill">
               <ShieldCheckIcon className="h-3 w-3" />
-              <span>P2P VERIFIED</span>
+              <span>P2P verified</span>
             </div>
           </div>
 
           <div className="ticket-title-row">
-            <span className="ticket-eyebrow">NOW SCREENING</span>
             <h4 className="ticket-film-title">{filmTitle}</h4>
           </div>
 
           <div className="ticket-specs-grid">
             <div className="spec-item">
-              <span className="spec-label">THEATRE</span>
+              <span className="spec-label">Theatre</span>
               <span className="spec-value">{roomCode}</span>
             </div>
             <div className="spec-item">
-              <span className="spec-label">TIER</span>
-              <span className="spec-value">ORCHESTRA</span>
+              <span className="spec-label">Tier</span>
+              <span className="spec-value">Orchestra</span>
             </div>
             <div className="spec-item">
-              <span className="spec-label">RESERVED SEAT</span>
+              <span className="spec-label">Reserved seat</span>
               <span className="spec-value gold">{seatCode}</span>
             </div>
             <div className="spec-item">
-              <span className="spec-label">FORMAT</span>
+              <span className="spec-label">Format</span>
               <span className="spec-value">{sourceType}</span>
             </div>
           </div>
 
           <div className="ticket-footer-row">
-            <span className="ticket-footnote">ZERO LOGS · CLIENT-SIDE ENCRYPTED · ADMIT TWO</span>
+            <span className="ticket-footnote">Client-side encrypted admission</span>
             {onEnterTheatre && (
               <button type="button" className="ticket-action-btn" onClick={onEnterTheatre}>
                 <span>Claim Seat</span>
@@ -128,10 +127,10 @@ export default function CinematicTicket({
         <div className="ticket-stub-section">
           <div className="stub-header">
             <TicketIcon className="h-4 w-4" />
-            <span className="stub-gate">GATE 01</span>
+            <span className="stub-gate">Gate 01</span>
           </div>
           <div className="stub-seat-callout">
-            <span className="callout-lbl">SEAT</span>
+            <span className="callout-lbl">Seat</span>
             <span className="callout-val">{seatCode}</span>
           </div>
           <div className="stub-barcode-wrapper">

@@ -20,7 +20,7 @@ export default function AudioController() {
     <button
       type="button"
       onClick={handleToggle}
-      className={`cinematic-audio-pill ${isPlaying ? "is-active" : ""}`}
+      className={`cinematic-audio-pill transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-focus)] focus-visible:outline-offset-2 active:scale-95 disabled:opacity-50 ${isPlaying ? "is-active" : ""}`}
       title={isPlaying ? "Mute Cinema Ambience" : "Enable Cinema Soundscape (432Hz + 35mm Projector)"}
       data-cursor="AUDIO"
     >
@@ -32,12 +32,12 @@ export default function AudioController() {
             <span className="eq-bar" />
             <span className="eq-bar" />
           </div>
-          <span className="audio-label">SOUND // 432Hz ON</span>
+          <span className="audio-label">Soundscape on</span>
         </>
       ) : (
         <>
           <VolumeMuteIcon className="h-3.5 w-3.5 text-champagne shrink-0" />
-          <span className="audio-label">SOUNDSCAPE // OFF</span>
+          <span className="audio-label">Soundscape off</span>
         </>
       )}
     </button>

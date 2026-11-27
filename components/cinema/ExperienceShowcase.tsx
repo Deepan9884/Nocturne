@@ -144,7 +144,7 @@ export default function ExperienceShowcase() {
         </div>
         <h3 className="card-heading">Unbroken Cinematic Walk-In</h3>
         <p className="card-body-text">
-          No abrupt page jump cuts. The 3D camera glides seamlessly from the box office lobby,
+          No abrupt page jump cuts. The 3D camera glides unbroken from the box office lobby,
           through parting velvet doors, down the lit aisle runner, settling you into seat F7
           in one continuous, masterfully graded tracking shot.
         </p>

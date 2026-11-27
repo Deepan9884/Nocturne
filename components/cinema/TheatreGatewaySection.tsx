@@ -1,15 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import dynamic from "next/dynamic";
 import { ArrowRightIcon, SparklesIcon, TicketIcon, FilmIcon } from "./icons";
 import type { FilmPreset } from "./BoxOfficeWidget";
 import { cinematicAudio } from "@/lib/cinematicSound";
-
-const TheatreCanvas = dynamic(
-  () => import("./TheatreCanvas").then((mod) => mod.default),
-  { ssr: false, loading: () => <div className="scene-loader-minimal" /> }
-);
+import TheatreCanvas from "./TheatreCanvas";
 
 interface TheatreGatewaySectionProps {
   activePreset: FilmPreset;
@@ -55,15 +50,14 @@ export default function TheatreGatewaySection({
           <div className="gateway-top-meta">
             <span className="gateway-pill">
               <TicketIcon className="h-3 w-3 text-champagne" />
-              <span>PRIVATE ACCESS // NOCTURNE SUITE</span>
+              <span>Private access</span>
             </span>
-            <span className="gateway-code">GATE CODE: NOC-S04</span>
+            <span className="gateway-code">Gate: NOC-S04</span>
           </div>
 
           <div className="gateway-center-cta">
-            <span className="gateway-eyebrow">YOUR AUDITORIUM AWAITS</span>
             <h2 className="gateway-headline">
-              Enter <em>Screen 04</em>
+              Enter Screen 04
             </h2>
             <p className="gateway-sub">
               Now staging: <strong>{activePreset.title}</strong> · {activePreset.ratio} · 24 Velvet Seats.

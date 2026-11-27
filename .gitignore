@@ -19,6 +19,7 @@
 
 # production
 /build
+/dist
 
 # misc
 .DS_Store
@@ -43,5 +44,6 @@ next-env.d.ts
 # local test & agent scratchpads
 /scratch/
 .agents/
+.hallmark/
 skills-lock.json
 

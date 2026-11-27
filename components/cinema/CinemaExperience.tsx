@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { enrichMovie, parseMovieLink, type Movie } from "@/lib/movie";
 import { ChatDock } from "./ChatDock";
@@ -10,11 +9,7 @@ import { TheatreHUD } from "./TheatreHUD";
 import { useRoom } from "./useRoom";
 import NocturneLogo from "./NocturneLogo";
 import { TicketIcon } from "./icons";
-
-const TheatreCanvas = dynamic(() => import("./TheatreCanvas"), {
-  ssr: false,
-  loading: () => <div className="scene-loader" />,
-});
+import TheatreCanvas from "./TheatreCanvas";
 
 type Phase = "lobby" | "preparing" | "entering" | "seated";
 

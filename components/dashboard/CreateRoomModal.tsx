@@ -1,16 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Film,
-  Users,
-  Volume2,
-  Lock,
-  Globe,
-  X,
-  Play,
-  Tv,
-} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Film, Users, Volume2, Lock, Globe, X, Play, Tv } from "lucide-react";
+import { AUDITORIUM_THEMES, CURATED_FILM_PRESETS } from "@/lib/data/cinemaRooms";
 
 interface CreateRoomModalProps {
   isOpen: boolean;
@@ -26,97 +18,90 @@ interface CreateRoomModalProps {
     spatialAudio: boolean;
   }) => void;
   defaultFilmUrl?: string;
+  defaultThemeId?: string;
 }
-
-const THEME_OPTIONS = [
-  {
-    id: "velvet",
-    name: "Screen 01 · Royal Velvet IMAX",
-    desc: "Plush burgundy recliners, brass sconces & curved screen",
-    accent: "#c9a86a",
-    badge: "Most Popular",
-  },
-  {
-    id: "cyber",
-    name: "Screen 02 · Nocturne Skydeck",
-    desc: "Starry skyline views, amber mood lighting & wide canvas",
-    accent: "#e3c995",
-    badge: "Atmospheric",
-  },
-  {
-    id: "indie",
-    name: "Screen 03 · Midnight Noir Lounge",
-    desc: "Intimate vintage acoustics, warm amber lighting",
-    accent: "#dfc28d",
-    badge: "Cozy",
-  },
-  {
-    id: "atmos",
-    name: "Screen 04 · Dolby Atmos Blackbox",
-    desc: "Stealth matte architecture, 32-channel spatial audio",
-    accent: "#8c7243",
-    badge: "Hi-Fi Audio",
-  },
-];
-
-const CURATED_FILM_PRESETS = [
-  {
-    title: "Cyberpunk 2077 · Night City Premiere",
-    url: "https://www.youtube.com/watch?v=BO8lX3hDU30",
-    genre: "Sci-Fi / Action",
-    duration: "4K 60fps",
-  },
-  {
-    title: "Dune: Part Two · Sandworm Sequence",
-    url: "https://www.youtube.com/watch?v=Way9Dexny3w",
-    genre: "Sci-Fi Epic",
-    duration: "IMAX 4K",
-  },
-  {
-    title: "Big Buck Bunny · 4K Color Grading Test",
-    url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    genre: "Animation",
-    duration: "10 mins",
-  },
-  {
-    title: "Tears of Steel · VFX Showcase",
-    url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
-    genre: "Cyberpunk VFX",
-    duration: "12 mins",
-  },
-  {
-    title: "Lo-fi Midnight Screening Chill Beats",
-    url: "https://www.youtube.com/watch?v=jfKfPfyJRdk",
-    genre: "Atmospheric / Music",
-    duration: "Live Radio",
-  },
-];
 
 export default function CreateRoomModal({
   isOpen,
   onClose,
   onLaunchRoom,
   defaultFilmUrl = "",
+  defaultThemeId = "velvet",
 }: CreateRoomModalProps) {
   const [roomName, setRoomName] = useState("Midnight Screening");
-  const [selectedTheme, setSelectedTheme] = useState("velvet");
+  const [selectedTheme, setSelectedTheme] = useState(defaultThemeId);
   const [filmUrl, setFilmUrl] = useState(defaultFilmUrl || CURATED_FILM_PRESETS[0].url);
   const [filmTitle, setFilmTitle] = useState(CURATED_FILM_PRESETS[0].title);
   const [seats, setSeats] = useState(24);
   const [isPrivate, setIsPrivate] = useState(false);
   const [spatialAudio, setSpatialAudio] = useState(true);
+  const [errors, setErrors] = useState<{ roomName?: string; filmUrl?: string }>({});
+
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setSelectedTheme(defaultThemeId || "velvet");
+    if (defaultFilmUrl) {
+      setFilmUrl(defaultFilmUrl);
+      const matched = CURATED_FILM_PRESETS.find((p) => p.url === defaultFilmUrl);
+      setFilmTitle(matched ? matched.title : "Custom Stream Presentation");
+    }
+    setErrors({});
+  }, [isOpen, defaultThemeId, defaultFilmUrl]);
+
+  useEffect(() => {
+    if (roomName.trim() && errors.roomName) {
+      setErrors((prev) => ({ ...prev, roomName: undefined }));
+    }
+  }, [roomName, errors.roomName]);
+
+  useEffect(() => {
+    if (filmUrl.trim() && errors.filmUrl) {
+      setErrors((prev) => ({ ...prev, filmUrl: undefined }));
+    }
+  }, [filmUrl, errors.filmUrl]);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) {
+      dialog.showModal();
+    }
+    return () => {
+      if (dialog.open) {
+        dialog.close();
+      }
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleSelectPreset = (preset: (typeof CURATED_FILM_PRESETS)[0]) => {
     setFilmUrl(preset.url);
     setFilmTitle(preset.title);
+    if (errors.filmUrl) {
+      setErrors((prev) => ({ ...prev, filmUrl: undefined }));
+    }
   };
 
   const handleCreate = () => {
-    const themeObj = THEME_OPTIONS.find((t) => t.id === selectedTheme) || THEME_OPTIONS[0];
+    const nextErrors: { roomName?: string; filmUrl?: string } = {};
+    if (!roomName.trim()) {
+      nextErrors.roomName = "Enter a room name for your screening.";
+    }
+    if (!filmUrl.trim()) {
+      nextErrors.filmUrl = "Enter a YouTube, Vimeo, or MP4 stream link.";
+    }
+    if (nextErrors.roomName || nextErrors.filmUrl) {
+      setErrors(nextErrors);
+      return;
+    }
+
+    const themeObj =
+      AUDITORIUM_THEMES.find((t) => t.id === selectedTheme) || AUDITORIUM_THEMES[0];
     onLaunchRoom({
-      name: roomName,
+      name: roomName.trim(),
       theme: selectedTheme,
       screenName: themeObj.name,
       filmUrl: filmUrl.trim() || CURATED_FILM_PRESETS[0].url,
@@ -128,140 +113,149 @@ export default function CreateRoomModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-xl animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl max-h-[92vh] flex flex-col rounded-3xl bg-[#0c0b10]/95 border border-[#c9a86a]/30 shadow-[0_0_80px_rgba(201,168,106,0.15)] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#c9a86a]/20 bg-[#14121a]/60">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#c9a86a]/20 border border-[#c9a86a]/40 flex items-center justify-center text-[#e3c995]">
-              <Tv className="w-5 h-5 text-[#c9a86a]" />
-            </div>
+    <dialog
+      ref={dialogRef}
+      className="dash-root dash-dialog"
+      aria-labelledby="create-room-title"
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      onClick={(e) => {
+        if (e.target === dialogRef.current) {
+          onClose();
+        }
+      }}
+    >
+      <div className="dash-dialog-shell">
+        <div className="dash-dialog-head">
+          <div className="dash-dialog-title-group">
+            <span className="dash-dialog-icon" aria-hidden="true">
+              <Tv size={18} />
+            </span>
             <div>
-              <h2 className="text-base sm:text-lg font-serif font-semibold text-[#f1e9db] tracking-wide">
-                Create Screening Room
+              <h2 id="create-room-title" className="dash-dialog-title">
+                Create screening room
               </h2>
-              <p className="text-xs text-[#cfc4b3]/70">
-                Host a synchronized private auditorium with spatial seats & voice
+              <p className="dash-dialog-sub">
+                Host a synchronized private auditorium with spatial seats and audio.
               </p>
             </div>
           </div>
+
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-[#cfc4b3] hover:text-[#f1e9db] hover:bg-[#c9a86a]/15 transition-colors"
+            className="dash-icon-close"
+            aria-label="Close create room dialog"
           >
-            <X className="w-5 h-5" />
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
-        {/* Form Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Room Name */}
-          <div>
-            <label className="block text-xs uppercase tracking-wider text-[#c9a86a] font-medium mb-2">
-              Auditorium Name
+        <div className="dash-dialog-body">
+          <div className="dash-field">
+            <label htmlFor="room-name-input" className="dash-label">
+              Auditorium name
             </label>
             <input
+              id="room-name-input"
+              name="roomName"
               type="text"
               value={roomName}
+              aria-invalid={Boolean(errors.roomName)}
+              aria-describedby="room-name-help"
               onChange={(e) => setRoomName(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-[#141318]/70 border border-[#c9a86a]/30 text-[#f1e9db] placeholder-[#91887b] focus:outline-none focus:border-[#c9a86a] text-sm"
-              placeholder="e.g. Alex's Midnight Premiere"
+              className="dash-input"
+              placeholder="Midnight Screening"
             />
+            <p
+              id="room-name-help"
+              className={`dash-help ${errors.roomName ? "dash-help--error" : ""}`}
+              role={errors.roomName ? "alert" : undefined}
+            >
+              {errors.roomName || ""}
+            </p>
           </div>
 
-          {/* Theme Selector */}
-          <div>
-            <label className="block text-xs uppercase tracking-wider text-[#c9a86a] font-medium mb-2.5">
-              Auditorium Architecture & Theme
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {THEME_OPTIONS.map((thm) => (
+          <div className="dash-field">
+            <span className="dash-label" id="room-theme-label">
+              Auditorium architecture
+            </span>
+            <div className="dash-theme-grid" role="group" aria-labelledby="room-theme-label">
+              {AUDITORIUM_THEMES.map((thm) => (
                 <button
                   key={thm.id}
                   type="button"
+                  aria-pressed={selectedTheme === thm.id}
                   onClick={() => setSelectedTheme(thm.id)}
-                  className={`p-3 rounded-2xl text-left border transition-all ${
-                    selectedTheme === thm.id
-                      ? "bg-[#c9a86a]/20 border-[#c9a86a] shadow-[0_0_15px_rgba(201,168,106,0.2)] text-[#f1e9db]"
-                      : "bg-[#141318]/40 border-[#c9a86a]/15 text-[#cfc4b3] hover:border-[#c9a86a]/40"
-                  }`}
+                  className="dash-theme-option"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold">{thm.name}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#c9a86a]/20 text-[#e3c995]">
-                      {thm.badge}
-                    </span>
+                  <div className="dash-room-top">
+                    <span className="dash-room-name">{thm.name}</span>
+                    <span className="dash-room-badge">{thm.badge}</span>
                   </div>
-                  <p className="text-[11px] text-[#91887b] mt-1 line-clamp-2">
-                    {thm.desc}
-                  </p>
+                  <p className="dash-room-desc">{thm.desc}</p>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Film Link Input */}
-          <div>
-            <label className="block text-xs uppercase tracking-wider text-[#c9a86a] font-medium mb-2">
-              Film Stream Source (YouTube, Vimeo, MP4 URL)
+          <div className="dash-field">
+            <label htmlFor="room-film-url" className="dash-label">
+              Film stream source (YouTube, Vimeo, or MP4 URL)
             </label>
-            <div className="relative">
+            <div className="dash-input-wrap">
+              <Film size={16} className="dash-input-icon" aria-hidden="true" />
               <input
-                type="text"
+                id="room-film-url"
+                name="filmUrl"
+                type="url"
                 value={filmUrl}
-                onChange={(e) => {
-                  setFilmUrl(e.target.value);
-                  setFilmTitle("Custom Stream Presentation");
-                }}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#141318]/70 border border-[#c9a86a]/30 text-[#f1e9db] placeholder-[#91887b] focus:outline-none focus:border-[#c9a86a] text-sm"
-                placeholder="Paste any YouTube or video URL..."
+                aria-invalid={Boolean(errors.filmUrl)}
+                aria-describedby="room-film-help"
+                onChange={(e) => { setFilmUrl(e.target.value); setFilmTitle("Custom Stream Presentation"); }}
+                className="dash-input dash-input--with-icon"
+                placeholder="https://www.youtube.com/watch?v=…"
               />
-              <Film className="w-4 h-4 text-[#c9a86a]/60 absolute left-3.5 top-3" />
             </div>
+            <p
+              id="room-film-help"
+              className={`dash-help ${errors.filmUrl ? "dash-help--error" : ""}`}
+              role={errors.filmUrl ? "alert" : undefined}
+            >
+              {errors.filmUrl || "Or choose a test reel below:"}
+            </p>
 
-            {/* Quick Presets Carousel */}
-            <div className="mt-3">
-              <span className="text-[11px] text-[#91887b] block mb-2">
-                Or pick a cinema test reel:
-              </span>
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {CURATED_FILM_PRESETS.map((preset, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => handleSelectPreset(preset)}
-                    className={`px-3 py-1.5 rounded-xl text-xs whitespace-nowrap border transition-all ${
-                      filmUrl === preset.url
-                        ? "bg-[#c9a86a]/30 border-[#c9a86a] text-[#f1e9db] shadow-[0_0_10px_rgba(201,168,106,0.25)]"
-                        : "bg-[#141318]/40 border-[#c9a86a]/20 text-[#cfc4b3] hover:bg-[#1a1822]"
-                    }`}
-                  >
-                    {preset.title.split("·")[0]}
-                  </button>
-                ))}
-              </div>
+            <div className="dash-chip-wrap" role="group" aria-label="Cinema test reels">
+              {CURATED_FILM_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  aria-pressed={filmUrl === preset.url}
+                  onClick={() => handleSelectPreset(preset)}
+                  className="dash-chip"
+                >
+                  {preset.title.split("·")[0].trim()}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Room Settings: Capacity, Audio, Privacy */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Seats */}
-            <div className="p-3.5 rounded-2xl bg-[#141318]/40 border border-[#c9a86a]/20">
-              <div className="flex items-center gap-2 text-xs text-[#cfc4b3] mb-2">
-                <Users className="w-4 h-4 text-[#c9a86a]" />
-                <span>Auditorium Seats</span>
+          <div className="dash-settings-strip">
+            <div className="dash-setting-col">
+              <div className="dash-setting-label">
+                <Users size={15} aria-hidden="true" />
+                <span>Auditorium seats</span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="dash-seg-group" role="group" aria-label="Seat capacity">
                 {[12, 24, 48].map((count) => (
                   <button
                     key={count}
                     type="button"
+                    aria-pressed={seats === count}
                     onClick={() => setSeats(count)}
-                    className={`flex-1 py-1 rounded-lg text-xs font-mono transition-colors ${
-                      seats === count
-                        ? "bg-[#c9a86a] text-[#050506] font-semibold"
-                        : "bg-[#1f1d24] text-[#cfc4b3] hover:bg-[#282532]"
-                    }`}
+                    className="dash-seg-btn"
                   >
                     {count}
                   </button>
@@ -269,63 +263,52 @@ export default function CreateRoomModal({
               </div>
             </div>
 
-            {/* Spatial Audio */}
-            <div className="p-3.5 rounded-2xl bg-[#141318]/40 border border-[#c9a86a]/20">
-              <div className="flex items-center gap-2 text-xs text-[#cfc4b3] mb-2">
-                <Volume2 className="w-4 h-4 text-[#c9a86a]" />
-                <span>Spatial 3D Audio</span>
+            <div className="dash-setting-col">
+              <div className="dash-setting-label">
+                <Volume2 size={15} aria-hidden="true" />
+                <span>Spatial 3D audio</span>
               </div>
               <button
                 type="button"
+                aria-pressed={spatialAudio}
                 onClick={() => setSpatialAudio(!spatialAudio)}
-                className={`w-full py-1 rounded-lg text-xs font-medium transition-colors ${
-                  spatialAudio
-                    ? "bg-[#c9a86a] text-[#050506] font-semibold"
-                    : "bg-[#1f1d24] text-[#cfc4b3]"
-                }`}
+                className="dash-seg-btn"
               >
-                {spatialAudio ? "Dolby Atmos On" : "Stereo Only"}
+                {spatialAudio ? "Dolby Atmos on" : "Stereo only"}
               </button>
             </div>
 
-            {/* Privacy */}
-            <div className="p-3.5 rounded-2xl bg-[#141318]/40 border border-[#c9a86a]/20">
-              <div className="flex items-center gap-2 text-xs text-[#cfc4b3] mb-2">
-                {isPrivate ? <Lock className="w-4 h-4 text-[#c9a86a]" /> : <Globe className="w-4 h-4 text-[#c9a86a]" />}
-                <span>Access Level</span>
+            <div className="dash-setting-col">
+              <div className="dash-setting-label">
+                {isPrivate ? (
+                  <Lock size={15} aria-hidden="true" />
+                ) : (
+                  <Globe size={15} aria-hidden="true" />
+                )}
+                <span>Access level</span>
               </div>
               <button
                 type="button"
+                aria-pressed={isPrivate}
                 onClick={() => setIsPrivate(!isPrivate)}
-                className={`w-full py-1 rounded-lg text-xs font-medium transition-colors ${
-                  isPrivate
-                    ? "bg-[#c9a86a] text-[#050506] font-semibold"
-                    : "bg-[#1f1d24] text-[#cfc4b3]"
-                }`}
+                className="dash-seg-btn"
               >
-                {isPrivate ? "Friends Only" : "Public Screening"}
+                {isPrivate ? "Friends only" : "Public screening"}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-[#c9a86a]/20 bg-[#121118]/60 flex items-center justify-between">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs text-[#cfc4b3] hover:text-[#f1e9db] transition-colors"
-          >
+        <div className="dash-dialog-foot">
+          <button type="button" onClick={onClose} className="dash-btn dash-btn--quiet">
             Cancel
           </button>
-          <button
-            onClick={handleCreate}
-            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#c9a86a] to-[#a88243] hover:from-[#e3c995] hover:to-[#b89150] text-[#050506] text-xs font-semibold border border-[#e3c995]/50 shadow-[0_0_25px_rgba(201,168,106,0.35)] flex items-center gap-2 transition-all"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Launch Auditorium Room</span>
+          <button type="button" onClick={handleCreate} className="dash-btn dash-btn--primary">
+            <Play size={14} aria-hidden="true" />
+            <span>Launch screening room</span>
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

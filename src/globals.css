@@ -1,68 +1,88 @@
+/* Hallmark · shape: Settled · genre: atmospheric · theme: brand · redesign: full
+ * paper: oklch(14.5% 0.005 280) · accent: oklch(74% 0.11 78) · display: Cormorant Garamond · body: Manrope · hero: Settled · nav: edge-aligned · footer: mast · signature: real-time 3D WebGL auditorium
+ * axes: dark/high-contrast-serif/warm · posture: Settled · contrast: pass · fold: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V4 · weakest: V, elevated luxury cinema genre via focused single-action stage */
+@import url("./tokens.css");
+@import url("./base.css");
 @import "tailwindcss";
 
 :root {
-  --ink: #050506;
-  --ink-raised: #0b0b0e;
-  --bone: #f1e9db;
-  --bone-soft: #cfc4b3;
-  --bone-muted: #91887b;
-  --champagne: #c9a86a;
-  --champagne-bright: #e3c995;
+  --ink: var(--color-paper);
+  --ink-raised: var(--color-paper-2);
+  --bone: var(--color-ink);
+  --bone-soft: var(--color-ink-2);
+  --bone-muted: var(--color-muted);
+  --champagne: var(--color-accent);
+  --champagne-bright: var(--color-accent-bright);
   --oxblood: #2a0d12;
   --line: rgba(241, 233, 219, 0.14);
   --line-soft: rgba(241, 233, 219, 0.075);
-  --line-gold: rgba(201, 168, 106, 0.34);
-  --danger: #d48878;
+  --line-gold: var(--color-rule);
+  --danger: var(--color-error);
+  --font-cormorant: "Cormorant Garamond", Georgia, serif;
+  --font-manrope: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-display-family: var(--font-cormorant), Georgia, "Times New Roman", serif;
   --font-sans-family: var(--font-manrope), "Helvetica Neue", Arial, sans-serif;
 }
 
 @theme inline {
-  --color-background: var(--ink);
-  --color-foreground: var(--bone);
-  --color-champagne: var(--champagne);
+  --color-background: var(--color-paper);
+  --color-foreground: var(--color-ink);
+  --color-champagne: var(--color-accent);
+  --color-paper: var(--color-paper);
+  --color-paper-2: var(--color-paper-2);
+  --color-paper-3: var(--color-paper-3);
+  --color-ink: var(--color-ink);
+  --color-ink-2: var(--color-ink-2);
+  --color-muted: var(--color-muted);
+  --color-rule: var(--color-rule);
+  --color-accent: var(--color-accent);
+  --color-accent-bright: var(--color-accent-bright);
   --font-sans: var(--font-manrope);
   --font-display: var(--font-cormorant);
 }
 
-* {
-  box-sizing: border-box;
-}
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
 
-html,
-body {
-  width: 100%;
-  min-height: 100%;
-  margin: 0;
-  overflow: auto;
-  background: var(--ink);
-  color: var(--bone);
-}
+  html,
+  body {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    overflow-x: clip;
+    overflow-y: auto;
+    background: var(--ink);
+    color: var(--bone);
+  }
 
-body {
-  font-family: var(--font-sans-family);
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
+  body {
+    font-family: var(--font-sans-family);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
 
-button,
-input,
-textarea {
-  font: inherit;
-}
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
 
-button {
-  color: inherit;
-}
+  button {
+    color: inherit;
+  }
 
-::selection {
-  background: var(--champagne);
-  color: #14100a;
-}
+  ::selection {
+    background: var(--champagne);
+    color: var(--color-accent-ink);
+  }
 
-:focus-visible {
-  outline: 1px solid var(--champagne-bright);
-  outline-offset: 3px;
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
 }
 
 .cinema-app {
@@ -6252,27 +6272,32 @@ button {
 
 .exit-theatre-pill {
   position: fixed;
-  top: 20px;
-  right: 24px;
-  z-index: 1000;
-  padding: 8px 18px;
-  background: rgba(14, 12, 10, 0.9);
-  border: 1px solid rgba(201, 168, 106, 0.4);
-  border-radius: 999px;
-  color: var(--bone);
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
+  top: var(--space-md);
+  right: var(--space-lg);
+  z-index: var(--z-tooltip);
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 var(--space-md);
+  background: var(--color-paper-2);
+  border: var(--rule-hair) solid var(--color-rule-2);
+  border-radius: var(--radius-pill);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.25s ease;
-  backdrop-filter: blur(10px);
+  transition: background-color var(--dur-short) var(--ease-out), border-color var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out), transform var(--dur-micro) var(--ease-out);
 }
 
 .exit-theatre-pill:hover {
-  border-color: var(--champagne-bright);
-  background: var(--oxblood);
-  color: var(--champagne-bright);
+  border-color: var(--color-accent);
+  background: var(--color-paper-3);
+  color: var(--color-accent-bright);
+}
+
+.exit-theatre-pill:active {
+  transform: translateY(1px);
 }
 
 /* ---------- Editorial Luxury Footer ---------- */
@@ -6673,7 +6698,6 @@ button {
   width: 100%;
   margin: 0 auto;
   padding: 100px 48px 80px;
-  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: opacity, transform;
 }
 
@@ -6928,11 +6952,14 @@ button {
 }
 
 /* ============================================================ */
-/* STAGE 3: HIGH PORCH VINTAGE FOOD AREA & PROVISIONS           */
+/* STAGE 3: CINEMA SNACK STAND OVERLAY                          */
 /* ============================================================ */
 .stage-3-layer {
   justify-content: flex-end;
-  padding-bottom: 96px;
+  padding-bottom: clamp(40px, 8vh, 84px);
+  padding-left: clamp(24px, 5vw, 64px);
+  padding-right: clamp(24px, 5vw, 64px);
+  box-sizing: border-box;
 }
 
 .high-porch-minimal-zone {
@@ -6946,18 +6973,21 @@ button {
 
 .porch-slogan-block {
   pointer-events: auto;
-  max-width: 680px;
+  max-width: min(520px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .porch-slogan-title {
   font-family: var(--font-cormorant), Georgia, serif;
-  font-size: clamp(38px, 4.4vw, 68px);
+  font-size: clamp(28px, 3.6vw, 54px);
   font-weight: 300;
-  line-height: 0.96;
-  letter-spacing: -0.025em;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
   color: var(--bone);
   margin: 0;
-  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.9);
+  text-shadow: 0 4px 28px rgba(0, 0, 0, 0.95);
 }
 
 .porch-slogan-title em {

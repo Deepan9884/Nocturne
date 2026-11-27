@@ -10,7 +10,7 @@ export function SeatingArchitectureOverlay() {
       <div className="seat-slogan-block">
         <h2 className="seat-slogan-title">
           Get seating view.<br />
-          <em>Theatre-level experience.</em>
+          <span>Theatre-level experience.</span>
         </h2>
       </div>
     </div>
@@ -21,9 +21,10 @@ export function ConcessionsFeaturesOverlay() {
   return (
     <div className="stage-overlay-content high-porch-minimal-zone">
       <div className="porch-slogan-block">
+        <span className="porch-eyebrow">Midnight Concessions</span>
         <h2 className="porch-slogan-title">
-          Get a real popcorn experience.<br />
-          <em>Artisanal cinema provisions.</em>
+          Fresh popcorn, warm puffs<br />
+          <em>&amp; artisan rolls.</em>
         </h2>
       </div>
     </div>
@@ -45,7 +46,7 @@ export function Screen05PremiereOverlay({ onLaunchCinema }: StageProps) {
       >
         <h2 className="stage-title">
           Watch your loved films.<br />
-          <em>Together with your closest ones.</em>
+          <span>Together with your closest ones.</span>
         </h2>
       </div>
     </div>

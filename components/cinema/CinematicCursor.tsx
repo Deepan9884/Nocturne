@@ -1,16 +1,16 @@
-"use client";
-
 import { useEffect, useState, useRef } from "react";
 
 export default function CinematicCursor() {
-  const [pos, setPos] = useState({ x: -100, y: -100 });
   const [cursorText, setCursorText] = useState("");
   const [isHovered, setIsHovered] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  const cursorElRef = useRef<HTMLDivElement>(null);
   const reqRef = useRef<number | null>(null);
   const mouseRef = useRef({ x: -100, y: -100 });
   const currentPosRef = useRef({ x: -100, y: -100 });
+  const isVisibleRef = useRef(false);
 
   useEffect(() => {
     // Check if device is touch-primary
@@ -21,28 +21,33 @@ export default function CinematicCursor() {
 
     const handleMouseMove = (e: MouseEvent) => {
       mouseRef.current = { x: e.clientX, y: e.clientY };
-      if (!isVisible) setIsVisible(true);
+      if (!isVisibleRef.current) {
+        isVisibleRef.current = true;
+        setIsVisible(true);
+      }
 
       // Check if hovering over an interactive element with custom cursor attribute
       const target = e.target as HTMLElement | null;
       if (target) {
         const interactive = target.closest("button, a, input, [role='button'], [data-cursor]");
         if (interactive) {
-          setIsHovered(true);
           const customText = interactive.getAttribute("data-cursor") || "";
-          setCursorText(customText);
+          setIsHovered((prev) => (!prev ? true : prev));
+          setCursorText((prev) => (prev !== customText ? customText : prev));
         } else {
-          setIsHovered(false);
-          setCursorText("");
+          setIsHovered((prev) => (prev ? false : prev));
+          setCursorText((prev) => (prev ? "" : prev));
         }
       }
     };
 
     const handleMouseLeave = () => {
+      isVisibleRef.current = false;
       setIsVisible(false);
     };
 
     const handleMouseEnter = () => {
+      isVisibleRef.current = true;
       setIsVisible(true);
     };
 
@@ -50,17 +55,16 @@ export default function CinematicCursor() {
     document.addEventListener("mouseleave", handleMouseLeave);
     document.addEventListener("mouseenter", handleMouseEnter);
 
-    // Smooth lerp animation loop
+    // Direct GPU-accelerated lerp loop without triggering React reconciliations
     const lerp = (start: number, end: number, factor: number) => start + (end - start) * factor;
 
     const animate = () => {
       currentPosRef.current.x = lerp(currentPosRef.current.x, mouseRef.current.x, 0.22);
       currentPosRef.current.y = lerp(currentPosRef.current.y, mouseRef.current.y, 0.22);
 
-      setPos({
-        x: currentPosRef.current.x,
-        y: currentPosRef.current.y,
-      });
+      if (cursorElRef.current) {
+        cursorElRef.current.style.transform = `translate3d(${Math.round(currentPosRef.current.x)}px, ${Math.round(currentPosRef.current.y)}px, 0)`;
+      }
 
       reqRef.current = requestAnimationFrame(animate);
     };
@@ -73,15 +77,17 @@ export default function CinematicCursor() {
       document.removeEventListener("mouseenter", handleMouseEnter);
       if (reqRef.current) cancelAnimationFrame(reqRef.current);
     };
-  }, [isVisible]);
+  }, []);
 
   if (isMobile || !isVisible) return null;
 
   return (
     <div
+      ref={cursorElRef}
       className={`cinematic-cursor-wrap ${isHovered ? "is-hovered" : ""} ${cursorText ? "has-text" : ""}`}
       style={{
-        transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
+        transform: `translate3d(${currentPosRef.current.x}px, ${currentPosRef.current.y}px, 0)`,
+        willChange: "transform",
       }}
       aria-hidden="true"
     >

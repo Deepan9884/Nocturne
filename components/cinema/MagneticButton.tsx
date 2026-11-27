@@ -1,6 +1,4 @@
-"use client";
-
-import { useRef, useState, MouseEvent, ReactNode } from "react";
+import { useRef, MouseEvent, ReactNode } from "react";
 
 interface MagneticButtonProps {
   children: ReactNode;
@@ -16,7 +14,7 @@ export default function MagneticButton({
   ...props
 }: MagneticButtonProps) {
   const btnRef = useRef<HTMLButtonElement>(null);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const innerRef = useRef<HTMLSpanElement>(null);
 
   const handleMouseMove = (e: MouseEvent<HTMLButtonElement>) => {
     if (!btnRef.current) return;
@@ -27,11 +25,24 @@ export default function MagneticButton({
     const deltaX = (e.clientX - centerX) * 0.35;
     const deltaY = (e.clientY - centerY) * 0.35;
 
-    setPos({ x: deltaX, y: deltaY });
+    btnRef.current.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`;
+    btnRef.current.style.transition = "none";
+
+    if (innerRef.current) {
+      innerRef.current.style.transform = `translate3d(${deltaX * 0.25}px, ${deltaY * 0.25}px, 0)`;
+      innerRef.current.style.transition = "none";
+    }
   };
 
   const handleMouseLeave = () => {
-    setPos({ x: 0, y: 0 });
+    if (!btnRef.current) return;
+    btnRef.current.style.transform = "translate3d(0, 0, 0)";
+    btnRef.current.style.transition = "transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)";
+
+    if (innerRef.current) {
+      innerRef.current.style.transform = "translate3d(0, 0, 0)";
+      innerRef.current.style.transition = "transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)";
+    }
   };
 
   return (
@@ -42,17 +53,12 @@ export default function MagneticButton({
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       className={`magnetic-button-wrap ${className}`}
-      style={{
-        transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
-        transition: pos.x === 0 ? "transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)" : "none",
-      }}
       {...props}
     >
       <span
+        ref={innerRef}
         className="magnetic-inner-content"
         style={{
-          transform: `translate3d(${pos.x * 0.25}px, ${pos.y * 0.25}px, 0)`,
-          transition: pos.x === 0 ? "transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)" : "none",
           display: "inline-flex",
           alignItems: "center",
           gap: "inherit",

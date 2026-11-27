@@ -1,12 +1,12 @@
 "use client";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Environment, Lightformer } from "@react-three/drei";
+import { Environment, Lightformer, PerformanceMonitor, AdaptiveDpr, AdaptiveEvents } from "@react-three/drei";
 import { Bloom, EffectComposer, Noise, Vignette } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { RoundedBoxGeometry } from "three-stdlib";
+import { RoundedBoxGeometry, MeshoptDecoder } from "three-stdlib";
 import type { Movie } from "@/lib/movie";
 
 export type ScenePhase = "lobby" | "preparing" | "entering" | "seated";
@@ -1034,11 +1034,12 @@ function Scene({
 export default function TheatreCanvas({ isPlaying, movie, onArrived, phase }: TheatreCanvasProps) {
   const compact = useCompactQuality();
   const visible = usePageVisibility();
+  const [dpr, setDpr] = useState(compact ? 1.0 : 1.4);
 
   return (
     <div className="scene-canvas" aria-hidden="true">
       <Canvas
-        dpr={compact ? [1, 1.15] : [1, 1.5]}
+        dpr={dpr}
         frameloop={visible ? "always" : "never"}
         camera={{ position: [0, 1.7, 19.25], fov: 52, near: 0.08, far: 80 }}
         gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
@@ -1049,7 +1050,14 @@ export default function TheatreCanvas({ isPlaying, movie, onArrived, phase }: Th
           gl.setClearColor("#050506");
         }}
       >
-        <Scene isPlaying={isPlaying} movie={movie} onArrived={onArrived} phase={phase} />
+        <PerformanceMonitor
+          onIncline={() => setDpr(Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1.4, 1.8))}
+          onDecline={() => setDpr(0.9)}
+        >
+          <AdaptiveDpr pixelated />
+          <AdaptiveEvents />
+          <Scene isPlaying={isPlaying} movie={movie} onArrived={onArrived} phase={phase} />
+        </PerformanceMonitor>
       </Canvas>
     </div>
   );

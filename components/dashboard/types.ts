@@ -1,3 +1,5 @@
+export type ModelBase = "girl" | "boy" | "anatomical";
+
 export type HairStyle =
   | "slick"
   | "pompadour"
@@ -5,7 +7,28 @@ export type HairStyle =
   | "bob"
   | "afro"
   | "wavy"
-  | "buzz";
+  | "buzz"
+  // Expanded styles from character sheets
+  | "curtainBob"
+  | "highPonytail"
+  | "longWavy"
+  | "sideBraid"
+  | "afroPuffs"
+  | "pixieCut"
+  | "texturedCrop";
+
+export type ExpressionType =
+  | "neutral"
+  | "smile"
+  | "confident"
+  | "surprised"
+  | "curious"
+  | "focused"
+  | "smirk";
+
+export type FacialHairType = "none" | "stubble" | "goatee";
+
+export type SkinFinishType = "matte" | "satin" | "dewy";
 
 export type EyewearType =
   | "cinema3d"
@@ -19,7 +42,14 @@ export type OutfitStyle =
   | "cyberJacket"
   | "hoodie"
   | "kimono"
-  | "tee";
+  | "tee"
+  // Expanded character sheet dresses & outfits
+  | "directorBlazer"
+  | "eveningGown"
+  | "urbanOversized"
+  | "tuxedoFemme"
+  | "cropStreetwear"
+  | "layeredCoat";
 
 export type AccessoryType =
   | "popcorn"
@@ -30,14 +60,24 @@ export type AccessoryType =
 export interface AvatarConfig {
   name: string;
   title: string;
+  modelBase?: ModelBase;
   skinTone: string;
+  skinFinish?: SkinFinishType;
+  freckles?: boolean;
   hairStyle: HairStyle;
   hairColor: string;
+  hairHighlights?: string;
   eyeColor: string;
   eyeGlow: boolean;
   eyewear: EyewearType;
+  expression?: ExpressionType;
+  eyelashes?: boolean;
+  lipColor?: string;
+  blushColor?: string;
+  facialHair?: FacialHairType;
   outfit: OutfitStyle;
   outfitColor: string;
+  outfitSecondaryColor?: string;
   accessory: AccessoryType;
   level: number;
 }

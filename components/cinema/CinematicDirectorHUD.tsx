@@ -22,7 +22,7 @@ export default function CinematicDirectorHUD({
   const stages = [
     { num: "01", name: "FOYER & ENTRANCE", cam: "CAM_01 // ENTRANCE_ELEV" },
     { num: "02", name: "SEATING & ARCHITECTURE", cam: "CAM_02 // ORCHESTRA_F07" },
-    { num: "03", name: "CONCESSIONS & FEATURES", cam: "CAM_03 // BAR_LOUNGE" },
+    { num: "03", name: "CONCESSIONS & SNACKS", cam: "CAM_03 // SNACK_STAND" },
     { num: "04", name: "SCREEN 05 PREMIERE", cam: "CAM_04 // VIP_SCREEN_05" },
   ];
 

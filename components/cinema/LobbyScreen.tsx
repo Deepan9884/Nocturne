@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import type { Movie } from "@/lib/movie";
 import { PosterImage } from "./PosterImage";
 import { ArrowRight, FilmIcon, LinkIcon, LockIcon, TicketIcon } from "./icons";
@@ -41,7 +41,7 @@ export function LobbyScreen({
   return (
     <div className="lobby">
       <header className="lobby-nav">
-        <Link className="brand" href="/" aria-label="Nocturne private cinema">
+        <Link className="brand" to="/" aria-label="Nocturne private cinema">
           <NocturneLogo size={34} glow={false} />
           <span className="brand-words">
             <strong>Nocturne</strong>
@@ -64,15 +64,8 @@ export function LobbyScreen({
 
       <main className="lobby-main">
         <section className="lobby-copy">
-          <p className="eyebrow hero-entrance">
-            <span className="eyebrow-line" />
-            A private screening room
-          </p>
-
           <h1 className="hero-entrance hero-title">
-            Your own
-            <br />
-            <em>private premiere.</em>
+            Your own private premiere.
           </h1>
 
           <p className="hero-sub hero-entrance">

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import dynamic from "next/dynamic";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
 import gsap from "gsap";
@@ -22,12 +22,7 @@ import AudioController from "./AudioController";
 import CinematicCursor from "./CinematicCursor";
 import MagneticButton from "./MagneticButton";
 import { PRESET_FILMS, FilmPreset } from "./BoxOfficeWidget";
-
-// Lazy-load the complete cinema app
-const CinemaExperience = dynamic(
-  () => import("./CinemaExperience").then((mod) => mod.default),
-  { ssr: false, loading: () => <div className="scene-loader-fullscreen" /> }
-);
+import CinemaExperience from "./CinemaExperience";
 
 function getStageOpacity(
   p: number,
@@ -42,17 +37,46 @@ function getStageOpacity(
   return (exitEnd - p) / (exitEnd - exitStart);
 }
 
+
+const Scene3D = React.memo(function Scene3D({
+  progressRef,
+  activeFilmTitle,
+  themeColor,
+}: {
+  progressRef: React.RefObject<number>;
+  activeFilmTitle: string;
+  themeColor: string;
+}) {
+  return (
+    <Canvas
+      dpr={[1, Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 1.2)]}
+      gl={{ antialias: false, powerPreference: "default", alpha: false, stencil: false }}
+      camera={{ position: [0, 1.7, 19.0], fov: 50, near: 0.1, far: 110 }}
+      onCreated={({ gl }) => {
+        gl.toneMapping = THREE.ACESFilmicToneMapping;
+        gl.toneMappingExposure = 1.15;
+      }}
+    >
+      <CinematicJourneyCanvas
+        progressRef={progressRef}
+        activeFilmTitle={activeFilmTitle}
+        themeColor={themeColor}
+      />
+    </Canvas>
+  );
+});
+
 export default function LandingPage() {
   const [showCinema, setShowCinema] = useState(false);
   const [initialFilmUrl, setInitialFilmUrl] = useState<string>("");
   const [activePreset, setActivePreset] = useState<FilmPreset>(PRESET_FILMS[0]);
   const [progress, setProgress] = useState(0); // 0.0 to 1.0 continuous spatial scroll
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [timecode, setTimecode] = useState("00:00:00:00");
   const [currentStage, setCurrentStage] = useState(1);
 
   const scrollTrackRef = useRef<HTMLDivElement>(null);
+  const progressRef = useRef(0);
   const lenisRef = useRef<any>(null);
+  const rafIdRef = useRef<number | null>(null);
 
   // Initialize Lenis + GSAP ScrollTrigger Integration
   useEffect(() => {
@@ -64,11 +88,11 @@ export default function LandingPage() {
 
       import("lenis").then(({ default: LenisModule }) => {
         lenis = new LenisModule({
-          duration: 1.5,
+          duration: 1.15,
           easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
           smoothWheel: true,
-          wheelMultiplier: 0.95,
-          touchMultiplier: 1.6,
+          wheelMultiplier: 1.05,
+          touchMultiplier: 1.5,
         });
         lenisRef.current = lenis;
 
@@ -91,13 +115,19 @@ export default function LandingPage() {
             scrub: true,
             onUpdate: (self) => {
               const p = self.progress;
-              setProgress(p);
+              progressRef.current = p;
 
-              // Derive active spatial stage (1: Foyer, 2: Seating, 3: Concessions, 4: Screen 05)
-              if (p < 0.24) setCurrentStage(1);
-              else if (p < 0.52) setCurrentStage(2);
-              else if (p < 0.80) setCurrentStage(3);
-              else setCurrentStage(4);
+              if (rafIdRef.current === null) {
+                rafIdRef.current = requestAnimationFrame(() => {
+                  const currentP = progressRef.current;
+                  setProgress(currentP);
+                  if (currentP < 0.24) setCurrentStage(1);
+                  else if (currentP < 0.52) setCurrentStage(2);
+                  else if (currentP < 0.80) setCurrentStage(3);
+                  else setCurrentStage(4);
+                  rafIdRef.current = null;
+                });
+              }
             },
           });
         }
@@ -108,55 +138,8 @@ export default function LandingPage() {
       ScrollTrigger.getAll().forEach((t) => t.kill());
       if (tickerCallback) gsap.ticker.remove(tickerCallback);
       if (lenis) lenis.destroy();
+      if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
     };
-  }, []);
-
-  // Track mouse coordinates for 3D parallax
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      const normX = (e.clientX / window.innerWidth) * 2 - 1;
-      const normY = -(e.clientY / window.innerHeight) * 2 + 1;
-      setMousePos({ x: normX, y: normY });
-    };
-
-    window.addEventListener("mousemove", handleMouseMove, { passive: true });
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
-
-  // 24fps camera timecode generator
-  useEffect(() => {
-    let frame = 0;
-    const interval = setInterval(() => {
-      frame++;
-      const f = frame % 24;
-      const totalSec = Math.floor(frame / 24);
-      const s = totalSec % 60;
-      const m = Math.floor(totalSec / 60) % 60;
-      const h = Math.floor(totalSec / 3600);
-      setTimecode(
-        `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}:${String(f).padStart(2, "0")}`
-      );
-    }, 1000 / 24);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Synchronized scroll fallback listener to ensure 100% sync
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!scrollTrackRef.current) return;
-      const maxScroll = scrollTrackRef.current.offsetHeight - window.innerHeight;
-      if (maxScroll <= 0) return;
-      const p = Math.max(0, Math.min(1, window.scrollY / maxScroll));
-      setProgress(p);
-      if (p < 0.24) setCurrentStage(1);
-      else if (p < 0.52) setCurrentStage(2);
-      else if (p < 0.80) setCurrentStage(3);
-      else setCurrentStage(4);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   // Jump smoothly to any room waypoint
@@ -247,42 +230,24 @@ export default function LandingPage() {
       {/* Persistent Cinematic Header */}
       <header className="cinematic-header">
         <div className="header-inner">
-          <a href="#" className="brand-lockup" aria-label="Nocturne Cinema Home">
+          <Link to="/" className="brand-lockup" aria-label="Nocturne Cinema Home">
             <NocturneLogo size={38} className="brand-emblem-svg" />
             <div className="brand-meta">
-              <strong className="brand-title">NOCTURNE</strong>
-              <span className="brand-subtitle">PRIVATE AUDITORIUM</span>
+              <strong className="brand-title">Nocturne</strong>
+              <span className="brand-subtitle">Private auditorium</span>
             </div>
-          </a>
+          </Link>
 
           <div className="header-actions">
             <AudioController />
 
-            <a
-              href="/login"
-              className="btn-header-cta flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs text-[#cfc4b3] hover:text-[#f1e9db] hover:bg-[#c9a86a]/10 transition-all"
+            <Link
+              to="/login"
+              className="btn-header-cta flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs text-[var(--color-ink-2)] hover:text-[var(--color-ink)] hover:bg-[var(--color-accent)]/10 transition-colors"
               data-cursor="LOGIN"
             >
               <span>Sign In</span>
-            </a>
-
-            <a
-              href="/dashboard"
-              className="btn-header-cta flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#181614]/80 border border-[#c9a86a]/30 text-[#e3c995] hover:text-[#f1e9db] hover:border-[#c9a86a]/60 hover:bg-[#231f1a] shadow-[0_0_15px_rgba(201,168,106,0.18)] transition-all text-xs"
-              data-cursor="DASHBOARD"
-            >
-              <SparklesIcon className="h-3.5 w-3.5 text-[#c9a86a]" />
-              <span>3D Dashboard</span>
-            </a>
-
-            <MagneticButton
-              className="btn-header-cta"
-              onClick={() => handleLaunchCinemaWithFilm(activePreset.url)}
-              data-cursor="ENTER"
-            >
-              <span>Enter The Room</span>
-              <ArrowRightIcon className="h-4 w-4" />
-            </MagneticButton>
+            </Link>
           </div>
         </div>
       </header>
@@ -293,22 +258,11 @@ export default function LandingPage() {
         <div className="spatial-sticky-viewport">
           {/* Continuous Multi-Room 3D Universe Canvas */}
           <div className="spatial-3d-scene-layer" aria-hidden="true">
-            <Canvas
-              dpr={[1, 1.5]}
-              gl={{ antialias: true, powerPreference: "high-performance", alpha: false }}
-              camera={{ position: [0, 1.7, 19.0], fov: 50, near: 0.1, far: 110 }}
-              onCreated={({ gl }) => {
-                gl.toneMapping = THREE.ACESFilmicToneMapping;
-                gl.toneMappingExposure = 1.15;
-              }}
-            >
-              <CinematicJourneyCanvas
-                progress={progress}
-                mousePos={mousePos}
-                activeFilmTitle={activePreset.title}
-                themeColor={activePreset.color}
-              />
-            </Canvas>
+            <Scene3D
+              progressRef={progressRef}
+              activeFilmTitle={activePreset.title}
+              themeColor={activePreset.color}
+            />
             <div className="spatial-radial-vignette" />
             <div className="spatial-anamorphic-grain" />
           </div>
@@ -328,8 +282,7 @@ export default function LandingPage() {
             <div className="hero-editorial-column">
               <h1 className="hero-headline animated-kinetic-title">
                 <span className="line-reveal">Paste a film.</span>
-                <span className="line-reveal"><em>Walk into</em> the screening room.</span>
-                <span className="line-reveal">Watch <em>together</em>.</span>
+                <span className="line-reveal">Enter the theatre.</span>
               </h1>
 
               <div className="hero-cta-button-row">
@@ -339,26 +292,17 @@ export default function LandingPage() {
                   data-cursor="ENTER"
                 >
                   <SparklesIcon className="h-4 w-4" />
-                  <span>Enter The Theatre</span>
-                  <ArrowRightIcon className="h-4 w-4" />
+                  <span>Enter the theatre</span>
                 </MagneticButton>
 
-                <a
-                  href="/dashboard"
+                <Link
+                  to="/dashboard"
                   className="btn-ghost-cinematic flex items-center gap-2"
                   data-cursor="DASHBOARD"
                 >
-                  <SparklesIcon className="h-4 w-4 text-[#c9a86a]" />
-                  <span>3D Avatar Dashboard</span>
-                </a>
-
-                <MagneticButton
-                  className="btn-ghost-cinematic"
-                  onClick={() => jumpToStage(1)}
-                  data-cursor="EXPLORE"
-                >
-                  <span>Explore The Salon</span>
-                </MagneticButton>
+                  <SparklesIcon className="h-4 w-4 text-[var(--color-accent)]" />
+                  <span>3D Avatar Studio</span>
+                </Link>
               </div>
             </div>
 

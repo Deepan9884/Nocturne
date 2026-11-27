@@ -1,6 +1,6 @@
 # Nocturne (ノクターン) — Luxury Cinematic Virtual Theatre
 
-> A luxury virtual cinema and synchronized screening room built with Next.js 16, React 19, Three.js, React Three Fiber, GSAP, and Lenis.
+> A luxury virtual cinema and synchronized screening room built with React 19, Vite, Three.js, React Three Fiber, GSAP, and Lenis.
 
 ---
 
@@ -50,13 +50,14 @@ Whether hosting a private premiere or exploring the spatial theatre hall, Noctur
 
 | Domain | Technologies |
 |---|---|
-| **Framework** | [Next.js 16](https://nextjs.org/) (App Router, Turbopack) |
+| **Framework / Bundler** | [Vite](https://vitejs.dev/) |
 | **UI Library** | [React 19](https://react.dev/) |
+| **Routing** | [React Router 7](https://reactrouter.com/) |
 | **Language** | [TypeScript 5](https://www.typescriptlang.org/) |
 | **3D & Shaders** | [Three.js](https://threejs.org/), [@react-three/fiber](https://r3f.docs.pmnd.rs/), [@react-three/drei](https://github.com/pmndrs/drei) |
 | **Post-Processing** | `@react-three/postprocessing`, `postprocessing` |
 | **Motion & Scroll** | [GSAP](https://greensock.com/gsap/) (ScrollTrigger), [Lenis](https://lenis.darkroom.engineering/), [Framer Motion](https://www.framer.com/motion/) |
-| **Styling** | [Tailwind CSS 4](https://tailwindcss.com/) |
+| **Styling** | [Tailwind CSS 4](https://tailwindcss.com/) via `@tailwindcss/vite` |
 | **Icons** | [Lucide React](https://lucide.dev/) |
 
 ---
@@ -65,18 +66,10 @@ Whether hosting a private premiere or exploring the spatial theatre hall, Noctur
 
 ```text
 nocturne/
-├── app/
-│   ├── dashboard/             # VIP Director dashboard & room management
-│   │   └── page.tsx
-│   ├── login/                 # Authentication / VIP member sign in
-│   │   └── page.tsx
-│   ├── signup/                # Member registration & concierge onboarding
-│   │   └── page.tsx
-│   ├── favicon.ico
-│   ├── globals.css            # Luxury design tokens, typography & cinematic shaders
-│   ├── icon.svg
-│   ├── layout.tsx             # Root layout with Cormorant & Manrope font families
-│   └── page.tsx               # Main entry point (Landing & Theatre Experience)
+├── src/
+│   ├── App.tsx                # Client-side routes (/, /dashboard, /login, /signup)
+│   ├── main.tsx               # React 19 root mounting with React Router
+│   └── globals.css            # Luxury design tokens, typography & cinematic shaders
 ├── components/
 │   ├── auth/                  # Authentication chasses & glassmorphic inputs
 │   │   └── AuthPage.tsx
@@ -122,9 +115,8 @@ nocturne/
 │   ├── films/                 # High-definition video reels & poster assets
 │   ├── favicon.svg
 │   └── logo.svg
-├── .gitignore
-├── eslint.config.mjs          # Flat ESLint configuration with Next.js presets
-├── next.config.ts             # Next.js configuration with package transpilation
+├── index.html                 # HTML shell with Google Fonts & metadata
+├── vite.config.ts             # Vite configuration with Tailwind CSS & path alias
 ├── package.json
 └── tsconfig.json
 ```
@@ -162,9 +154,9 @@ nocturne/
 
 ## Available Scripts
 
-- `npm run dev` — Starts the local Next.js development server with Turbopack.
-- `npm run build` — Compiles and builds the production bundle with TypeScript checking.
-- `npm run start` — Starts the Next.js production server.
+- `npm run dev` — Starts the instant Vite development server.
+- `npm run build` — Compiles and optimizes the production bundle with Vite.
+- `npm run preview` — Locally previews the production build.
 - `npm run lint` — Runs ESLint across the codebase.
 
 ---

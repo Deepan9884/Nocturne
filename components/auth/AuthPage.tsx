@@ -1,84 +1,99 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
-import {
-  Film,
-  Sparkles,
-  Lock,
-  Mail,
-  User,
-  ArrowRight,
-  Eye,
-  EyeOff,
-  Check,
-  Shield,
-  Volume2,
-  Tv,
-  Star,
-  ChevronLeft,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, ChevronLeft, Eye, EyeOff } from "lucide-react";
 import NocturneLogo from "../cinema/NocturneLogo";
+import TheatreEntranceScene from "../cinema/TheatreEntranceScene";
 import {
-  PRESET_AVATARS,
+  DEFAULT_AVATAR,
+  loadSavedAvatar,
   saveAvatarToStorage,
   saveStoredUser,
   UserProfile,
 } from "../dashboard/avatarStorage";
-import { AvatarConfig } from "../dashboard/types";
-
-// Dynamic import for 3D Avatar preview widget
-const Avatar3DViewer = dynamic(
-  () => import("../dashboard/Avatar3DViewer"),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-full h-full flex items-center justify-center text-[#c9a86a]/50 text-xs">
-        <div className="animate-pulse">Initializing 3D Holo-Chamber...</div>
-      </div>
-    ),
-  }
-);
+import "../../src/auth.css";
 
 interface AuthPageProps {
   initialMode?: "login" | "signup";
 }
 
 export default function AuthPage({ initialMode = "login" }: AuthPageProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "signup">(initialMode);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Form states
+  // Form state
   const [name, setName] = useState("Alex Vance");
   const [email, setEmail] = useState("alex@nocturne.cinema");
   const [password, setPassword] = useState("••••••••••••");
-  const [membershipTier, setMembershipTier] = useState<"VIP Director" | "Cinephile Standard">("VIP Director");
   const [rememberMe, setRememberMe] = useState(true);
-  const [selectedAvatar, setSelectedAvatar] = useState<AvatarConfig>(PRESET_AVATARS[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Validation and inline status feedback
+  const [touched, setTouched] = useState<{ name?: boolean; email?: boolean; password?: boolean }>({});
+  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
+  const [passcodeHint, setPasscodeHint] = useState("");
+
+  useEffect(() => {
+    setMode(initialMode);
+    setErrors({});
+    setPasscodeHint("");
+  }, [initialMode]);
+
+  const validateField = (field: "name" | "email" | "password", val: string) => {
+    if (field === "name" && mode === "signup" && !val.trim()) {
+      return "Enter a display name for your auditorium seat.";
+    }
+    if (field === "email") {
+      const trimmed = val.trim();
+      if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+        return "Enter an email formatted as name@example.com.";
+      }
+    }
+    if (field === "password" && val.length < 4) {
+      return "Enter a passcode of at least four characters.";
+    }
+    return undefined;
+  };
+
+  const handleFieldBlur = (field: "name" | "email" | "password", val: string) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const err = validateField(field, val);
+    setErrors((prev) => ({ ...prev, [field]: err }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const nextErrors = {
+      name: mode === "signup" ? validateField("name", name) : undefined,
+      email: validateField("email", email),
+      password: validateField("password", password),
+    };
+    setTouched({ name: true, email: true, password: true });
+    setErrors(nextErrors);
+
+    if (nextErrors.name || nextErrors.email || nextErrors.password) {
+      return;
+    }
+
     setIsSubmitting(true);
 
+    const avatar = loadSavedAvatar();
     const userProfile: UserProfile = {
       name: mode === "signup" ? (name.trim() || "Cinephile") : (name || "Alex Vance"),
-      email: email.trim() || "director@nocturne.cinema",
-      tier: membershipTier,
+      email: email.trim() || "alex@nocturne.cinema",
+      tier: "VIP Director",
       isLoggedIn: true,
-      avatarConfig: selectedAvatar,
+      avatarConfig: avatar,
     };
 
-    // Save avatar and user profile to storage
     saveStoredUser(userProfile);
-    saveAvatarToStorage(selectedAvatar);
+    saveAvatarToStorage(avatar);
 
     setTimeout(() => {
-      router.push("/dashboard");
-    }, 600);
+      navigate("/dashboard");
+    }, 350);
   };
 
   const handleDemoSignIn = () => {
@@ -88,374 +103,250 @@ export default function AuthPage({ initialMode = "login" }: AuthPageProps) {
       email: "alex@nocturne.cinema",
       tier: "VIP Director",
       isLoggedIn: true,
-      avatarConfig: PRESET_AVATARS[0],
+      avatarConfig: DEFAULT_AVATAR,
     };
     saveStoredUser(demoUser);
-    saveAvatarToStorage(PRESET_AVATARS[0]);
+    saveAvatarToStorage(DEFAULT_AVATAR);
 
     setTimeout(() => {
-      router.push("/dashboard");
-    }, 400);
+      navigate("/dashboard");
+    }, 300);
   };
 
-  const handleSelectPreset = (preset: AvatarConfig) => {
-    setSelectedAvatar(preset);
-    setName(preset.name);
+  const handleForgotPasscode = () => {
+    setPasscodeHint("Local preview: no mail server is connected, so use any passcode or the demo pass below.");
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#050506] text-[#f1e9db] flex flex-col items-center justify-center p-3 sm:p-6 lg:p-8 font-sans selection:bg-[#c9a86a]/30 selection:text-[#f1e9db] relative overflow-x-hidden">
-      {/* Background Cinematic Atmosphere & Amber/Gold Spotlights */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Top Center Projector Beam */}
-        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[1000px] h-[550px] bg-[#c9a86a]/10 rounded-full blur-[150px]" />
-        {/* Left Oxblood Ambient Glow */}
-        <div className="absolute -bottom-24 -left-24 w-[750px] h-[750px] bg-[#2a0d12]/30 rounded-full blur-[170px]" />
-        {/* Right Bronze Accent Glow */}
-        <div className="absolute top-1/4 -right-24 w-[600px] h-[600px] bg-[#8c7243]/10 rounded-full blur-[140px]" />
-        {/* Anamorphic Lens Flare Line */}
-        <div className="absolute top-1/3 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#c9a86a]/15 to-transparent" />
-      </div>
-
-      {/* Top Floating Navigation Header */}
-      <header className="w-full max-w-6xl flex items-center justify-between py-4 mb-4 select-none z-20">
-        <Link href="/" className="flex items-center gap-3 group">
-          <NocturneLogo size={34} glow={true} />
-          <div>
-            <span className="text-base font-bold tracking-wider text-[#f1e9db] group-hover:text-[#e3c995] transition-colors">
-              NOCTURNE
-            </span>
-            <span className="block text-[10px] text-[#c9a86a]/70 uppercase tracking-widest font-mono">
-              Private Cinema
-            </span>
-          </div>
+    <div className="auth-page">
+      <header className="auth-header">
+        <Link to="/" className="auth-brand" aria-label="Nocturne private cinema home">
+          <NocturneLogo size={34} glow={false} />
+          <span className="auth-brand-words">
+            <strong className="auth-brand-name">Nocturne</strong>
+            <span className="auth-brand-sub">Private cinema</span>
+          </span>
         </Link>
 
-        <Link
-          href="/"
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#141318]/70 hover:bg-[#1f1d24] border border-[#c9a86a]/20 text-xs text-[#cfc4b3] hover:text-[#f1e9db] transition-all"
-        >
-          <ChevronLeft className="w-3.5 h-3.5" />
-          <span>Back to Theatre</span>
+        <Link to="/" className="auth-back-link">
+          <ChevronLeft size={16} aria-hidden="true" />
+          <span>Back to theatre</span>
         </Link>
       </header>
 
-      {/* Main Glassmorphism Auth Chassis */}
-      <div className="relative w-full max-w-6xl min-h-[700px] rounded-[32px] bg-[#0c0b10]/90 backdrop-blur-[36px] border border-[#c9a86a]/25 shadow-[0_0_80px_rgba(201,168,106,0.12)] flex flex-col lg:flex-row overflow-hidden z-10">
-        {/* Subtle Top-Edge Champagne Luster Line */}
-        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#e3c995]/40 to-transparent pointer-events-none z-30" />
+      <main className="auth-main">
+        <div className="auth-grid">
+          <section className="auth-visual-col" aria-label="3D theatre entrance">
+            <figure
+              className="auth-stage-frame"
+              aria-label="Interactive 3D exterior entrance to Nocturne Screen 04"
+            >
+              <TheatreEntranceScene entering={isSubmitting} />
+            </figure>
+          </section>
 
-        {/* ============================================================ */}
-        {/* LEFT COLUMN: 3D CHARACTER SHOWCASE & PREMIERE CALLOUT        */}
-        {/* ============================================================ */}
-        <div className="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-10 border-b lg:border-b-0 lg:border-r border-[#c9a86a]/15 bg-gradient-to-b from-[#14121a]/60 via-[#0a090e]/80 to-[#100e16]/80 relative select-none">
-          {/* Top Editorial Eyebrow */}
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#c9a86a]/15 border border-[#c9a86a]/30 text-[#e3c995] text-xs font-mono uppercase tracking-wider mb-4">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Screen 01 · Private Premiere</span>
+          <section className="auth-form-col" aria-labelledby="auth-heading">
+            <div className="auth-tabs" role="tablist" aria-label="Account mode">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "login"}
+                className="auth-tab"
+                onClick={() => setMode("login")}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "signup"}
+                className="auth-tab"
+                onClick={() => setMode("signup")}
+              >
+                Create pass
+              </button>
             </div>
 
-            <h1 className="text-3xl sm:text-4xl font-serif italic text-[#f1e9db] tracking-tight leading-snug">
-              {mode === "login"
-                ? "Welcome back to your private auditorium."
-                : "Claim your 3D avatar & enter the cinema."}
+            <h1 id="auth-heading" className="auth-heading">
+              {mode === "login" ? "Step into your seat" : "Create your pass"}
             </h1>
-
-            <p className="text-xs sm:text-sm text-[#cfc4b3]/75 mt-2.5 max-w-md">
+            <p className="auth-lead">
               {mode === "login"
-                ? "Step into the screening room. Your custom 3D character, personal seat, and synchronized watch parties are waiting."
-                : "Every member receives an interactive full-body 3D character, customizable attire, and real-time Dolby Atmos screening rooms."}
+                ? "Sign in to open your private screening room."
+                : "Create an account to open your private screening room."}
             </p>
-          </div>
 
-          {/* Interactive 3D Avatar Holo-Chamber */}
-          <div className="w-full h-72 sm:h-80 my-6 rounded-2xl bg-black/60 border border-[#c9a86a]/20 relative overflow-hidden shadow-inner flex items-center justify-center">
-            <Avatar3DViewer
-              config={selectedAvatar}
-              isInteractive={true}
-              isSpinning={false}
-              fov={38}
-            />
-
-            {/* Chamber Floating Badges */}
-            <div className="absolute top-3 left-3 flex items-center gap-2 pointer-events-none">
-              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-black/75 backdrop-blur-md text-[#e3c995] border border-[#c9a86a]/30 font-mono">
-                {selectedAvatar.name}
-              </span>
-              <span className="text-[10px] text-[#91887b] font-mono">
-                Lvl {selectedAvatar.level}
-              </span>
-            </div>
-
-            <div className="absolute bottom-3 right-3 pointer-events-none">
-              <span className="text-[10px] text-[#cfc4b3]/70 bg-black/60 px-2 py-1 rounded-full backdrop-blur-sm border border-[#c9a86a]/20 font-mono">
-                Interactive 3D Avatar
-              </span>
-            </div>
-          </div>
-
-          {/* Feature Pillars */}
-          <div className="grid grid-cols-3 gap-2.5 pt-4 border-t border-[#c9a86a]/15 text-xs text-[#cfc4b3]/80">
-            <div className="flex items-center gap-2">
-              <Volume2 className="w-4 h-4 text-[#c9a86a]" />
-              <span className="text-[11px]">Dolby 3D Audio</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Tv className="w-4 h-4 text-[#c9a86a]" />
-              <span className="text-[11px]">Private Rooms</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-[#c9a86a]" />
-              <span className="text-[11px]">VIP Passkey</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ============================================================ */}
-        {/* RIGHT COLUMN: AUTH FORM (LOGIN / SIGN UP)                     */}
-        {/* ============================================================ */}
-        <div className="w-full lg:w-1/2 flex flex-col justify-center p-6 sm:p-10 bg-[#09080d]/90">
-          {/* Mode Switcher Tabs */}
-          <div className="flex items-center p-1 rounded-2xl bg-[#141318]/90 border border-[#c9a86a]/20 mb-8 max-w-sm">
-            <button
-              type="button"
-              onClick={() => setMode("login")}
-              className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
-                mode === "login"
-                  ? "bg-gradient-to-r from-[#c9a86a] to-[#a88243] text-[#050506] shadow-[0_0_15px_rgba(201,168,106,0.3)]"
-                  : "text-[#cfc4b3]/70 hover:text-[#f1e9db]"
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("signup")}
-              className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
-                mode === "signup"
-                  ? "bg-gradient-to-r from-[#c9a86a] to-[#a88243] text-[#050506] shadow-[0_0_15px_rgba(201,168,106,0.3)]"
-                  : "text-[#cfc4b3]/70 hover:text-[#f1e9db]"
-              }`}
-            >
-              Premiere Sign Up
-            </button>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Moniker / Name (Sign Up only) */}
-            {mode === "signup" && (
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-[#c9a86a] font-medium mb-1.5">
-                  Director Moniker / Full Name
-                </label>
-                <div className="relative">
+            <form className="auth-form" onSubmit={handleSubmit} noValidate>
+              {mode === "signup" && (
+                <div className="auth-field">
+                  <label className="auth-label" htmlFor="auth-name">
+                    Display name
+                  </label>
                   <input
+                    id="auth-name"
+                    name="name"
                     type="text"
+                    autoComplete="name"
                     required
+                    aria-required="true"
+                    aria-invalid={Boolean(errors.name)}
+                    aria-describedby={errors.name ? "auth-name-help" : undefined}
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Alex Vance"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#141318]/80 border border-[#c9a86a]/25 text-[#f1e9db] placeholder-[#91887b] focus:outline-none focus:border-[#c9a86a] text-sm transition-all"
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (touched.name) {
+                        setErrors((prev) => ({ ...prev, name: validateField("name", e.target.value) }));
+                      }
+                    }}
+                    onBlur={(e) => handleFieldBlur("name", e.target.value)}
+                    placeholder="Alex Vance"
+                    className="auth-input"
                   />
-                  <User className="w-4 h-4 text-[#c9a86a]/60 absolute left-3.5 top-3" />
+                  {errors.name && (
+                    <p id="auth-name-help" className="auth-help auth-help--error" role="alert">
+                      {errors.name}
+                    </p>
+                  )}
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Email Address */}
-            <div>
-              <label className="block text-xs uppercase tracking-wider text-[#c9a86a] font-medium mb-1.5">
-                Cinema Account Email
-              </label>
-              <div className="relative">
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@nocturne.cinema"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#141318]/80 border border-[#c9a86a]/25 text-[#f1e9db] placeholder-[#91887b] focus:outline-none focus:border-[#c9a86a] text-sm transition-all"
-                />
-                <Mail className="w-4 h-4 text-[#c9a86a]/60 absolute left-3.5 top-3" />
-              </div>
-            </div>
-
-            {/* Passcode */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs uppercase tracking-wider text-[#c9a86a] font-medium">
-                  Auditorium Passcode
+              <div className="auth-field">
+                <label className="auth-label" htmlFor="auth-email">
+                  Email address
                 </label>
-                {mode === "login" && (
-                  <button
-                    type="button"
-                    onClick={() => alert("Password reset link dispatched to cinema email.")}
-                    className="text-[11px] text-[#c9a86a] hover:text-[#e3c995] transition-colors"
-                  >
-                    Forgot passcode?
-                  </button>
+                <input
+                  id="auth-email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  aria-required="true"
+                  aria-invalid={Boolean(errors.email)}
+                  aria-describedby={errors.email ? "auth-email-help" : undefined}
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (touched.email) {
+                      setErrors((prev) => ({ ...prev, email: validateField("email", e.target.value) }));
+                    }
+                  }}
+                  onBlur={(e) => handleFieldBlur("email", e.target.value)}
+                  placeholder="name@nocturne.cinema"
+                  className="auth-input"
+                />
+                {errors.email && (
+                  <p id="auth-email-help" className="auth-help auth-help--error" role="alert">
+                    {errors.email}
+                  </p>
                 )}
               </div>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your security pass..."
-                  className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-[#141318]/80 border border-[#c9a86a]/25 text-[#f1e9db] placeholder-[#91887b] focus:outline-none focus:border-[#c9a86a] text-sm transition-all"
-                />
-                <Lock className="w-4 h-4 text-[#c9a86a]/60 absolute left-3.5 top-3" />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="p-1 text-[#91887b] hover:text-[#f1e9db] absolute right-3 top-2.5 transition-colors"
+
+              <div className="auth-field">
+                <div className="auth-label-row">
+                  <label className="auth-label" htmlFor="auth-password">
+                    Passcode
+                  </label>
+                  {mode === "login" && (
+                    <button
+                      type="button"
+                      onClick={handleForgotPasscode}
+                      className="auth-text-action"
+                    >
+                      Forgot passcode?
+                    </button>
+                  )}
+                </div>
+                <div className="auth-input-wrap">
+                  <input
+                    id="auth-password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete={mode === "login" ? "current-password" : "new-password"}
+                    required
+                    aria-required="true"
+                    aria-invalid={Boolean(errors.password)}
+                    aria-describedby="auth-password-help"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (touched.password) {
+                        setErrors((prev) => ({ ...prev, password: validateField("password", e.target.value) }));
+                      }
+                    }}
+                    onBlur={(e) => handleFieldBlur("password", e.target.value)}
+                    placeholder="At least 4 characters"
+                    className="auth-input auth-input--with-toggle"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="auth-toggle-vis"
+                    aria-label={showPassword ? "Hide passcode" : "Show passcode"}
+                    aria-pressed={showPassword}
+                  >
+                    {showPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+                  </button>
+                </div>
+                <p
+                  id="auth-password-help"
+                  className={`auth-help ${errors.password ? "auth-help--error" : ""}`}
+                  aria-live="polite"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+                  {errors.password || passcodeHint}
+                </p>
               </div>
-            </div>
 
-            {/* Sign Up Options: Membership Tier & Avatar Selector */}
-            {mode === "signup" && (
-              <>
-                {/* Membership Tier Picker */}
-                <div>
-                  <label className="block text-xs uppercase tracking-wider text-[#c9a86a] font-medium mb-1.5">
-                    Membership Pass Tier
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setMembershipTier("VIP Director")}
-                      className={`p-2.5 rounded-xl text-left border transition-all ${
-                        membershipTier === "VIP Director"
-                          ? "bg-[#c9a86a]/20 border-[#c9a86a] text-[#f1e9db] shadow-[0_0_15px_rgba(201,168,106,0.2)]"
-                          : "bg-[#141318]/50 border-[#c9a86a]/15 text-[#cfc4b3] hover:border-[#c9a86a]/40"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold">VIP Director</span>
-                        <Star className="w-3.5 h-3.5 text-[#c9a86a] fill-current" />
-                      </div>
-                      <span className="text-[10px] text-[#91887b] block mt-0.5">
-                        Dolby 8K & Custom auditoriums
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setMembershipTier("Cinephile Standard")}
-                      className={`p-2.5 rounded-xl text-left border transition-all ${
-                        membershipTier === "Cinephile Standard"
-                          ? "bg-[#c9a86a]/20 border-[#c9a86a] text-[#f1e9db] shadow-[0_0_15px_rgba(201,168,106,0.2)]"
-                          : "bg-[#141318]/50 border-[#c9a86a]/15 text-[#cfc4b3] hover:border-[#c9a86a]/40"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold">Cinephile</span>
-                        <Film className="w-3.5 h-3.5 text-[#91887b]" />
-                      </div>
-                      <span className="text-[10px] text-[#91887b] block mt-0.5">
-                        Public watch parties & lounge
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Starting 3D Avatar Selector */}
-                <div>
-                  <label className="block text-xs uppercase tracking-wider text-[#c9a86a] font-medium mb-1.5">
-                    Choose Initial 3D Character
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {PRESET_AVATARS.map((preset, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleSelectPreset(preset)}
-                        className={`p-2 rounded-xl text-left border transition-all flex items-center justify-between ${
-                          selectedAvatar.name === preset.name
-                            ? "bg-[#c9a86a]/20 border-[#c9a86a] text-[#f1e9db] shadow-[0_0_10px_rgba(201,168,106,0.2)]"
-                            : "bg-[#141318]/40 border-[#c9a86a]/15 text-[#cfc4b3] hover:border-[#c9a86a]/30"
-                        }`}
-                      >
-                        <div className="truncate">
-                          <div className="text-xs font-medium truncate">{preset.name}</div>
-                          <div className="text-[10px] text-[#91887b] truncate capitalize">
-                            {preset.hairStyle} · {preset.outfit}
-                          </div>
-                        </div>
-                        {selectedAvatar.name === preset.name && (
-                          <Check className="w-3.5 h-3.5 text-[#c9a86a] flex-shrink-0" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Remember Me Checkbox */}
-            <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center gap-2 cursor-pointer text-xs text-[#cfc4b3]">
+              <label className="auth-check-row" htmlFor="auth-remember">
                 <input
+                  id="auth-remember"
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="rounded border-[#c9a86a]/40 bg-[#141318] text-[#c9a86a] focus:ring-0"
                 />
-                <span>Keep me seated on this browser</span>
+                <span>Keep me signed in on this browser</span>
               </label>
-            </div>
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#c9a86a] to-[#a88243] hover:from-[#e3c995] hover:to-[#b89150] text-[#050506] text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-[0_0_25px_rgba(201,168,106,0.35)] disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <span className="animate-pulse">Opening Auditorium Doors...</span>
-              ) : (
-                <>
-                  <span>
-                    {mode === "login"
-                      ? "Enter The Premiere"
-                      : "Create Pass & Claim 3D Avatar"}
-                  </span>
-                  <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-                </>
-              )}
-            </button>
-          </form>
+              <div className="auth-actions">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  aria-busy={isSubmitting}
+                  className="auth-btn auth-btn--primary"
+                >
+                  {isSubmitting ? (
+                    <span>Opening doors…</span>
+                  ) : (
+                    <>
+                      <span>{mode === "login" ? "Enter theatre" : "Create pass"}</span>
+                      <ArrowRight size={16} aria-hidden="true" />
+                    </>
+                  )}
+                </button>
 
-          {/* Quick Demo Sign In & Divider */}
-          <div className="mt-6 pt-5 border-t border-[#c9a86a]/15 space-y-3">
-            <button
-              type="button"
-              onClick={handleDemoSignIn}
-              className="w-full py-2.5 px-4 rounded-xl bg-[#16141a]/80 hover:bg-[#c9a86a]/15 border border-[#c9a86a]/25 text-[#e3c995] text-xs font-medium flex items-center justify-center gap-2 transition-all"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-[#c9a86a]" />
-              <span>Instant Demo Access (Director Alex Vance)</span>
-            </button>
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={handleDemoSignIn}
+                  className="auth-btn auth-btn--quiet whitespace-nowrap"
+                >
+                  <span>Demo pass: Alex Vance</span>
+                </button>
+              </div>
 
-            <p className="text-[11px] text-[#91887b] text-center">
-              {mode === "login" ? "New to Nocturne Cinema? " : "Already hold a cinema pass? "}
-              <button
-                type="button"
-                onClick={() => setMode(mode === "login" ? "signup" : "login")}
-                className="text-[#c9a86a] hover:underline font-medium"
-              >
-                {mode === "login" ? "Join the Premiere" : "Sign In here"}
-              </button>
-            </p>
-          </div>
+              <p className="auth-switch-note">
+                {mode === "login" ? "New to Nocturne?" : "Already have a pass?"}
+                <button
+                  type="button"
+                  onClick={() => setMode(mode === "login" ? "signup" : "login")}
+                  className="auth-switch-btn"
+                >
+                  {mode === "login" ? "Create a pass" : "Sign in"}
+                </button>
+              </p>
+            </form>
+          </section>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

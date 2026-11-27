@@ -61,7 +61,7 @@ export function FilmPlayer({ movie, onClose }: FilmPlayerProps) {
           ) : null}
 
           {isDirectVideo && movie.playbackUrl ? (
-            <video src={movie.playbackUrl} controls autoPlay playsInline poster={movie.posterCandidates[0]}>
+            <video src={movie.playbackUrl} controls autoPlay muted playsInline poster={movie.posterCandidates[0]}>
               Your browser cannot play this film.
             </video>
           ) : null}

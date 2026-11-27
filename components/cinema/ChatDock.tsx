@@ -96,8 +96,7 @@ export function ChatDock({
       <div className="chat-panel" aria-hidden={!open}>
         <header className="chat-head">
           <div>
-            <p className="micro-label text-[var(--champagne)]">Private room</p>
-            <h2>Screen 04 chat</h2>
+            <h2>Screen 04 private chat</h2>
           </div>
           <button type="button" className="icon-button" onClick={onClose} aria-label="Close chat">
             <CloseIcon className="h-4 w-4" />

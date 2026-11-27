@@ -1,12 +1,12 @@
-"use client";
-
-import { useMemo, useRef, useEffect } from "react";
+import React, { useMemo, useRef, useEffect } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
+import CinemaSnackStand3D from "./CinemaSnackStand3D";
 
 export interface CinematicJourneyCanvasProps {
-  progress: number; // 0.0 to 1.0 continuous scroll
-  mousePos: { x: number; y: number };
+  progress?: number;
+  progressRef?: React.RefObject<number>;
+  mousePos?: { x: number; y: number };
   activeFilmTitle?: string;
   themeColor?: string;
 }
@@ -19,511 +19,130 @@ export interface LuxuryCinemaSeatItem {
   label: string;
 }
 
-function LuxuryCinemaSeat({ item }: { item: LuxuryCinemaSeatItem }) {
-  const isAisleSeat = item.col === 3 || item.col === 4;
+const InstancedCinemaSeats = React.memo(function InstancedCinemaSeats({
+  seats,
+}: {
+  seats: Array<LuxuryCinemaSeatItem>;
+}) {
+  const plinthRef = useRef<THREE.InstancedMesh>(null);
+  const baseRef = useRef<THREE.InstancedMesh>(null);
+  const cushionRef = useRef<THREE.InstancedMesh>(null);
+  const backrestRef = useRef<THREE.InstancedMesh>(null);
+  const headrestRef = useRef<THREE.InstancedMesh>(null);
+  const armrestsRef = useRef<THREE.InstancedMesh>(null);
+
+  useEffect(() => {
+    const dummy = new THREE.Object3D();
+
+    seats.forEach((seat, i) => {
+      // 1. Bronze plinth
+      dummy.position.set(seat.pos.x, seat.pos.y + 0.05, seat.pos.z);
+      dummy.rotation.set(0, 0, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      plinthRef.current?.setMatrixAt(i, dummy.matrix);
+
+      // 2. Velvet Foundation
+      dummy.position.set(seat.pos.x, seat.pos.y + 0.23, seat.pos.z + 0.02);
+      dummy.updateMatrix();
+      baseRef.current?.setMatrixAt(i, dummy.matrix);
+
+      // 3. Seat Cushion
+      dummy.position.set(seat.pos.x, seat.pos.y + 0.32, seat.pos.z + 0.01);
+      dummy.updateMatrix();
+      cushionRef.current?.setMatrixAt(i, dummy.matrix);
+
+      // 4. Backrest
+      dummy.position.set(seat.pos.x, seat.pos.y + 0.65, seat.pos.z + 0.24);
+      dummy.rotation.set(-0.14, 0, 0);
+      dummy.updateMatrix();
+      backrestRef.current?.setMatrixAt(i, dummy.matrix);
+
+      // 5. Headrest
+      dummy.position.set(seat.pos.x, seat.pos.y + 0.98, seat.pos.z + 0.20);
+      dummy.rotation.set(-0.08, 0, 0);
+      dummy.updateMatrix();
+      headrestRef.current?.setMatrixAt(i, dummy.matrix);
+
+      // 6. Armrests (Left & Right)
+      dummy.rotation.set(0, 0, 0);
+      dummy.position.set(seat.pos.x - 0.43, seat.pos.y + 0.38, seat.pos.z + 0.02);
+      dummy.updateMatrix();
+      armrestsRef.current?.setMatrixAt(i * 2, dummy.matrix);
+
+      dummy.position.set(seat.pos.x + 0.43, seat.pos.y + 0.38, seat.pos.z + 0.02);
+      dummy.updateMatrix();
+      armrestsRef.current?.setMatrixAt(i * 2 + 1, dummy.matrix);
+    });
+
+    plinthRef.current && (plinthRef.current.instanceMatrix.needsUpdate = true);
+    baseRef.current && (baseRef.current.instanceMatrix.needsUpdate = true);
+    cushionRef.current && (cushionRef.current.instanceMatrix.needsUpdate = true);
+    backrestRef.current && (backrestRef.current.instanceMatrix.needsUpdate = true);
+    headrestRef.current && (headrestRef.current.instanceMatrix.needsUpdate = true);
+    armrestsRef.current && (armrestsRef.current.instanceMatrix.needsUpdate = true);
+  }, [seats]);
+
+  const sweetSpot = seats.find((s) => s.isSweetSpot);
 
   return (
-    <group position={item.pos}>
-      {/* 1. Heavy Bronze Cast Circular Anchor Plinth & Mounting Rings */}
-      <mesh position={[0, 0.012, 0]}>
-        <cylinderGeometry args={[0.18, 0.20, 0.025, 24]} />
-        <meshStandardMaterial color="#0c0b0e" metalness={0.92} roughness={0.22} />
-      </mesh>
-      {/* Polished Champagne Gold Plinth Beveled Ring */}
-      <mesh position={[0, 0.025, 0]}>
-        <cylinderGeometry args={[0.185, 0.185, 0.008, 24]} />
-        <meshStandardMaterial color="#dfc28d" metalness={0.94} roughness={0.14} />
-      </mesh>
-      {/* Central Flared Column Pedestal */}
-      <mesh position={[0, 0.10, 0]}>
-        <cylinderGeometry args={[0.055, 0.09, 0.18, 20]} />
-        <meshStandardMaterial color="#141318" metalness={0.88} roughness={0.24} />
-      </mesh>
-      {/* Champagne Gold Mounting Collar */}
-      <mesh position={[0, 0.18, 0]}>
-        <cylinderGeometry args={[0.095, 0.095, 0.018, 20]} />
-        <meshStandardMaterial color="#dfc28d" metalness={0.94} roughness={0.14} />
-      </mesh>
+    <group>
+      {/* 40 Plinths in 1 draw call */}
+      <instancedMesh ref={plinthRef} args={[undefined, undefined, seats.length]}>
+        <cylinderGeometry args={[0.18, 0.20, 0.10, 12]} />
+        <meshStandardMaterial color="#0c0b0e" metalness={0.9} roughness={0.25} />
+      </instancedMesh>
 
-      {/* 2. Sculpted Curvaceous Velvet Cushion Foundation */}
-      {/* Base Foundation Tier Body (Deep royal oxblood) */}
-      <mesh position={[0, 0.23, 0.02]}>
-        <boxGeometry args={[0.76, 0.12, 0.58]} />
-        <meshStandardMaterial color="#5a101a" roughness={0.62} metalness={0.04} />
-      </mesh>
-      {/* Foundation Front Waterfall Bullnose Roll */}
-      <mesh position={[0, 0.23, -0.27]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.06, 0.06, 0.76, 24]} />
-        <meshStandardMaterial color="#5a101a" roughness={0.62} metalness={0.04} />
-      </mesh>
-      {/* Satin Champagne Gold Perimeter Piping Bead */}
-      <mesh position={[0, 0.285, 0.02]}>
-        <boxGeometry args={[0.78, 0.012, 0.58]} />
-        <meshStandardMaterial color="#dfc28d" metalness={0.88} roughness={0.22} />
-      </mesh>
-      <mesh position={[0, 0.285, -0.27]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.008, 0.008, 0.78, 20]} />
-        <meshStandardMaterial color="#dfc28d" metalness={0.88} roughness={0.22} />
-      </mesh>
+      {/* 40 Bases in 1 draw call */}
+      <instancedMesh ref={baseRef} args={[undefined, undefined, seats.length]}>
+        <boxGeometry args={[0.76, 0.14, 0.58]} />
+        <meshStandardMaterial color="#5a101a" roughness={0.65} metalness={0.05} />
+      </instancedMesh>
 
-      {/* Upper Pillow-Top Cushion - Channel-Tufted Upholstery with Cylindrical Bolster Rolls */}
-      <mesh position={[0, 0.325, 0.01]}>
-        <boxGeometry args={[0.34, 0.07, 0.56]} />
-        <meshStandardMaterial color="#881a29" roughness={0.48} metalness={0.06} />
-      </mesh>
-      {/* Left Thigh Bolster Cylinder Roll */}
-      <mesh position={[-0.24, 0.33, 0.01]}>
-        <cylinderGeometry args={[0.065, 0.065, 0.56, 20]} />
+      {/* 40 Cushions in 1 draw call */}
+      <instancedMesh ref={cushionRef} args={[undefined, undefined, seats.length]}>
+        <boxGeometry args={[0.74, 0.08, 0.56]} />
+        <meshStandardMaterial color="#881a29" roughness={0.5} metalness={0.05} />
+      </instancedMesh>
+
+      {/* 40 Backrests in 1 draw call */}
+      <instancedMesh ref={backrestRef} args={[undefined, undefined, seats.length]}>
+        <boxGeometry args={[0.72, 0.60, 0.12]} />
         <meshStandardMaterial color="#781422" roughness={0.52} metalness={0.05} />
-      </mesh>
-      {/* Right Thigh Bolster Cylinder Roll */}
-      <mesh position={[0.24, 0.33, 0.01]}>
-        <cylinderGeometry args={[0.065, 0.065, 0.56, 20]} />
-        <meshStandardMaterial color="#781422" roughness={0.52} metalness={0.05} />
-      </mesh>
-      {/* Front Comfort Waterfall Velvet Roll */}
-      <mesh position={[0, 0.31, -0.27]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.045, 0.045, 0.74, 24]} />
+      </instancedMesh>
+
+      {/* 40 Headrests in 1 draw call */}
+      <instancedMesh ref={headrestRef} args={[undefined, undefined, seats.length]}>
+        <boxGeometry args={[0.56, 0.18, 0.14]} />
         <meshStandardMaterial color="#881a29" roughness={0.48} metalness={0.06} />
-      </mesh>
+      </instancedMesh>
 
-      {/* Motorized-Style Retractable Rounded Calf-Rest Bolster tucked under front */}
-      <mesh position={[0, 0.16, -0.28]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.055, 0.055, 0.70, 24]} />
-        <meshStandardMaterial color="#62121e" roughness={0.58} metalness={0.04} />
-      </mesh>
-      {/* Polished Gold Calf-Rest Rounded Trim Collars */}
-      {[-0.35, 0.35].map((x, i) => (
-        <mesh key={i} position={[x, 0.16, -0.28]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.058, 0.058, 0.015, 20]} />
-          <meshStandardMaterial color="#dfc28d" metalness={0.94} roughness={0.14} />
-        </mesh>
-      ))}
+      {/* 80 Armrests in 1 draw call */}
+      <instancedMesh ref={armrestsRef} args={[undefined, undefined, seats.length * 2]}>
+        <boxGeometry args={[0.12, 0.24, 0.58]} />
+        <meshStandardMaterial color="#5a101a" roughness={0.65} metalness={0.05} />
+      </instancedMesh>
 
-      {/* 3. Ergonomic Fluted Curvaceous Backrest (Facing -Z toward screen, back at +Z) */}
-      <group position={[0, 0.58, 0.24]} rotation={[0.08, 0, 0]}>
-        {/* Core Backrest Upholstery Frame */}
-        <mesh position={[0, 0, 0]}>
-          <boxGeometry args={[0.74, 0.50, 0.10]} />
-          <meshStandardMaterial color="#62111c" roughness={0.58} metalness={0.05} />
-        </mesh>
-        {/* Fluted Vertical Pillowed Velvet Cushions (Front Face facing Screen) */}
-        {/* Center Flute Pillowed Half-Cylinder */}
-        <mesh position={[0, 0, -0.055]} rotation={[-Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.11, 0.11, 0.46, 20, 1, false, 0, Math.PI]} />
-          <meshStandardMaterial color="#881a29" roughness={0.48} metalness={0.06} />
-        </mesh>
-        {/* Left Flute Pillowed Half-Cylinder */}
-        <mesh position={[-0.20, 0, -0.05]} rotation={[-Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.08, 0.08, 0.46, 16, 1, false, 0, Math.PI]} />
-          <meshStandardMaterial color="#781422" roughness={0.50} metalness={0.05} />
-        </mesh>
-        {/* Right Flute Pillowed Half-Cylinder */}
-        <mesh position={[0.20, 0, -0.05]} rotation={[-Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.08, 0.08, 0.46, 16, 1, false, 0, Math.PI]} />
-          <meshStandardMaterial color="#781422" roughness={0.50} metalness={0.05} />
-        </mesh>
-        {/* Left Ergonomic Torso Bolster Cylinder Wing */}
-        <mesh position={[-0.34, 0, -0.03]} rotation={[0, 0, 0]}>
-          <cylinderGeometry args={[0.055, 0.055, 0.48, 16]} />
-          <meshStandardMaterial color="#701220" roughness={0.52} metalness={0.05} />
-        </mesh>
-        {/* Right Ergonomic Torso Bolster Cylinder Wing */}
-        <mesh position={[0.34, 0, -0.03]} rotation={[0, 0, 0]}>
-          <cylinderGeometry args={[0.055, 0.055, 0.48, 16]} />
-          <meshStandardMaterial color="#701220" roughness={0.52} metalness={0.05} />
-        </mesh>
-
-        {/* 4. Luxury Rear Shell & Amenities (Seen by viewer seated behind) */}
-        {/* Curvaceous Sculpted Rear Frame with Rounded Corners & Bullnose Profile */}
-        <group position={[0, 0, 0.064]}>
-          {/* Central High-Gloss Makassar Ebony Back Shell */}
-          <mesh position={[0, 0, 0]}>
-            <boxGeometry args={[0.64, 0.42, 0.018]} />
-            <meshStandardMaterial color="#160e0a" roughness={0.24} metalness={0.12} />
-          </mesh>
-
-          {/* Semicircular Rounded Fluted Bullnose Side Rails (Left & Right) */}
-          {[-0.32, 0.32].map((railX, ri) => (
-            <mesh key={`rear-side-${ri}`} position={[railX, 0, 0]}>
-              <cylinderGeometry args={[0.028, 0.028, 0.42, 20]} />
-              <meshStandardMaterial color="#160e0a" roughness={0.24} metalness={0.12} />
-            </mesh>
-          ))}
-
-          {/* Semicircular Rounded Top & Bottom Bullnose Rails */}
-          {[-0.21, 0.21].map((railY, ri) => (
-            <mesh key={`rear-tb-${ri}`} position={[0, railY, 0]} rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.028, 0.028, 0.64, 20]} />
-              <meshStandardMaterial color="#160e0a" roughness={0.24} metalness={0.12} />
-            </mesh>
-          ))}
-
-          {/* 4 Spherical Rounded Corner Beads connecting the curved rails */}
-          {[
-            [-0.32, 0.21],
-            [0.32, 0.21],
-            [-0.32, -0.21],
-            [0.32, -0.21],
-          ].map(([cx, cy], ci) => (
-            <mesh key={`corner-bead-${ci}`} position={[cx, cy, 0]}>
-              <sphereGeometry args={[0.028, 16, 16]} />
-              <meshStandardMaterial color="#160e0a" roughness={0.24} metalness={0.12} />
-            </mesh>
-          ))}
-
-          {/* Continuous Polished Champagne Gold Perimeter Accent Piping */}
-          <mesh position={[0, 0.22, -0.004]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.009, 0.009, 0.68, 20]} />
-            <meshStandardMaterial color="#dfc28d" metalness={0.95} roughness={0.12} />
-          </mesh>
-          <mesh position={[0, -0.22, -0.004]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.009, 0.009, 0.68, 20]} />
-            <meshStandardMaterial color="#dfc28d" metalness={0.95} roughness={0.12} />
-          </mesh>
-          {[-0.33, 0.33].map((px, pi) => (
-            <mesh key={`gold-pipe-${pi}`} position={[px, 0, -0.004]}>
-              <cylinderGeometry args={[0.009, 0.009, 0.44, 20]} />
-              <meshStandardMaterial color="#dfc28d" metalness={0.95} roughness={0.12} />
-            </mesh>
-          ))}
-          {[
-            [-0.33, 0.22],
-            [0.33, 0.22],
-            [-0.33, -0.22],
-            [0.33, -0.22],
-          ].map(([gx, gy], gi) => (
-            <mesh key={`gold-corner-${gi}`} position={[gx, gy, -0.004]}>
-              <sphereGeometry args={[0.010, 16, 16]} />
-              <meshStandardMaterial color="#dfc28d" metalness={0.95} roughness={0.12} />
-            </mesh>
-          ))}
-
-          {/* Inset Fluted Acoustic Velvet Panel with Pillowed Vertical Ribs */}
-          <mesh position={[0, 0.02, 0.011]}>
-            <boxGeometry args={[0.56, 0.32, 0.01]} />
-            <meshStandardMaterial color="#4c0c16" roughness={0.65} metalness={0.04} />
-          </mesh>
-          {/* Vertical Fluted Velvet Ribs */}
-          {[-0.20, -0.10, 0, 0.10, 0.20].map((rx, ri) => (
-            <mesh key={`rib-${ri}`} position={[rx, 0.02, 0.016]}>
-              <cylinderGeometry args={[0.012, 0.012, 0.31, 12]} />
-              <meshStandardMaterial color="#6a121e" roughness={0.55} metalness={0.05} />
-            </mesh>
-          ))}
-        </group>
-
-        {/* Hand-Stitched Saddle Leather VIP Pocket with Sculpted Rounded Bottom */}
-        <group position={[0, -0.08, 0.086]}>
-          {/* Leather Pouch Body */}
-          <mesh>
-            <boxGeometry args={[0.50, 0.16, 0.016]} />
-            <meshStandardMaterial color="#221612" roughness={0.56} metalness={0.08} />
-          </mesh>
-          {/* Semicircular Rounded Bottom Leather Roll */}
-          <mesh position={[0, -0.08, 0]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.016, 0.016, 0.50, 20]} />
-            <meshStandardMaterial color="#221612" roughness={0.56} metalness={0.08} />
-          </mesh>
-          {/* Rounded Bottom Corner End Finials */}
-          {[-0.25, 0.25].map((cx, ci) => (
-            <mesh key={`pouch-corner-${ci}`} position={[cx, -0.08, 0]}>
-              <sphereGeometry args={[0.016, 16, 16]} />
-              <meshStandardMaterial color="#221612" roughness={0.56} metalness={0.08} />
-            </mesh>
-          ))}
-          {/* Champagne Stitched Leather Top Rim with Rounded Bead */}
-          <mesh position={[0, 0.08, 0.006]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.008, 0.008, 0.50, 16]} />
-            <meshStandardMaterial color="#c9a86a" metalness={0.88} roughness={0.22} />
-          </mesh>
-          {/* Brass Rivet Accents */}
-          {[-0.22, 0.22].map((rx, ri) => (
-            <mesh key={`rivet-${ri}`} position={[rx, 0.06, 0.012]} rotation={[Math.PI / 2, 0, 0]}>
-              <cylinderGeometry args={[0.01, 0.01, 0.006, 16]} />
-              <meshStandardMaterial color="#dfc28d" metalness={0.95} roughness={0.15} />
-            </mesh>
-          ))}
-        </group>
-
-        {/* Architectural Polished Brass Stadium Cartouche (Row & Seat ID) */}
-        <group position={[0, 0.13, 0.086]}>
-          {/* Center Brass Body */}
-          <mesh>
-            <boxGeometry args={[0.16, 0.06, 0.01]} />
-            <meshStandardMaterial color="#dfc28d" metalness={0.95} roughness={0.14} />
-          </mesh>
-          {/* Semicircular Rounded Cartouche Ends */}
-          {[-0.08, 0.08].map((endX, ei) => (
-            <mesh key={ei} position={[endX, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.03, 0.03, 0.01, 20]} />
-              <meshStandardMaterial color="#dfc28d" metalness={0.95} roughness={0.14} />
-            </mesh>
-          ))}
-          {/* Dark Oxidized Engraving Inset */}
-          <mesh position={[0, 0, 0.006]}>
-            <boxGeometry args={[0.16, 0.046, 0.004]} />
-            <meshStandardMaterial color="#120d0b" roughness={0.4} metalness={0.2} />
-          </mesh>
-          {/* Mini Nocturne Shield Crest */}
-          <mesh position={[0, 0, 0.009]} rotation={[0, 0, Math.PI / 4]}>
-            <boxGeometry args={[0.016, 0.016, 0.004]} />
-            <meshStandardMaterial color="#ffe2a0" metalness={0.95} roughness={0.1} />
-          </mesh>
-        </group>
-      </group>
-
-      {/* 5. Pillowed Executive Headrest with Voluptuous Arched Silhouette */}
-      <group position={[0, 0.88, 0.28]} rotation={[0.05, 0, 0]}>
-        {/* Curvaceous Dark Walnut Capsule Rear Shell */}
-        <group position={[0, 0, 0.055]}>
-          {/* Central Plate */}
-          <mesh>
-            <boxGeometry args={[0.50, 0.16, 0.018]} />
-            <meshStandardMaterial color="#160e0a" roughness={0.25} metalness={0.1} />
-          </mesh>
-          {/* Semicircular Curvaceous Walnut Ends */}
-          {[-0.25, 0.25].map((wx, wi) => (
-            <mesh key={`headrest-end-${wi}`} position={[wx, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.08, 0.08, 0.018, 24]} />
-              <meshStandardMaterial color="#160e0a" roughness={0.25} metalness={0.1} />
-            </mesh>
-          ))}
-          {/* Inset Fluted Acoustic Velvet Capsule on Rear */}
-          <mesh position={[0, 0, 0.01]}>
-            <boxGeometry args={[0.42, 0.11, 0.008]} />
-            <meshStandardMaterial color="#520d18" roughness={0.65} metalness={0.04} />
-          </mesh>
-          {[-0.21, 0.21].map((vx, vi) => (
-            <mesh key={`velvet-end-${vi}`} position={[vx, 0, 0.01]} rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.055, 0.055, 0.008, 20]} />
-              <meshStandardMaterial color="#520d18" roughness={0.65} metalness={0.04} />
-            </mesh>
-          ))}
-          {/* Polished Brass Nocturne Medallion on Rear Headrest */}
-          <mesh position={[0, 0, 0.016]}>
-            <cylinderGeometry args={[0.032, 0.032, 0.006, 24]} />
-            <meshStandardMaterial color="#dfc28d" metalness={0.95} roughness={0.12} />
-          </mesh>
-        </group>
-
-        {/* Front Center Voluptuous Pillow-Roll Cushion (Facing Screen) */}
-        <mesh position={[0, 0, -0.02]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.075, 0.075, 0.44, 24]} />
-          <meshStandardMaterial color="#901e2e" roughness={0.44} metalness={0.06} />
-        </mesh>
-        {/* Spherical Rounded End Caps on Center Roll */}
-        {[-0.22, 0.22].map((endX, ei) => (
-          <mesh key={ei} position={[endX, 0, -0.02]}>
-            <sphereGeometry args={[0.075, 16, 16]} />
-            <meshStandardMaterial color="#7e1624" roughness={0.48} metalness={0.05} />
-          </mesh>
-        ))}
-
-        {/* Front Left Wing Bolster */}
-        <mesh position={[-0.28, 0, -0.01]} rotation={[0, -0.18, 0]}>
-          <cylinderGeometry args={[0.06, 0.06, 0.16, 16]} />
-          <meshStandardMaterial color="#7e1624" roughness={0.48} metalness={0.05} />
-        </mesh>
-        {/* Front Right Wing Bolster */}
-        <mesh position={[0.28, 0, -0.01]} rotation={[0, 0.18, 0]}>
-          <cylinderGeometry args={[0.06, 0.06, 0.16, 16]} />
-          <meshStandardMaterial color="#7e1624" roughness={0.48} metalness={0.05} />
-        </mesh>
-
-        {/* Polished Brass Nocturne Monogram on Front Headrest */}
-        <mesh position={[0, 0, -0.096]}>
-          <boxGeometry args={[0.09, 0.055, 0.008]} />
-          <meshStandardMaterial color="#dfc28d" metalness={0.95} roughness={0.12} />
-        </mesh>
-
-        {/* Arched Curvaceous Walnut Crown Roll along Top (Replaces Boxy Plank) */}
-        <mesh position={[0, 0.095, 0.01]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.034, 0.034, 0.58, 24]} />
-          <meshStandardMaterial color="#160e0a" roughness={0.3} metalness={0.15} />
-        </mesh>
-        {/* Spherical Crown Finials on Left and Right Ends */}
-        {[-0.29, 0.29].map((fx, fi) => (
-          <group key={`crown-finial-${fi}`} position={[fx, 0.095, 0.01]}>
-            <mesh>
-              <sphereGeometry args={[0.035, 16, 16]} />
-              <meshStandardMaterial color="#160e0a" roughness={0.3} metalness={0.15} />
-            </mesh>
-            {/* Polished Gold Collar Ring */}
-            <mesh position={[fi === 0 ? 0.02 : -0.02, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
-              <torusGeometry args={[0.036, 0.006, 12, 24]} />
-              <meshStandardMaterial color="#dfc28d" metalness={0.95} roughness={0.12} />
-            </mesh>
-          </group>
-        ))}
-        {/* Polished Champagne Gold Inlay Ribbon along Cap Rail */}
-        <mesh position={[0, 0.128, 0.01]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.006, 0.006, 0.54, 20]} />
-          <meshStandardMaterial color="#dfc28d" metalness={0.95} roughness={0.12} />
-        </mesh>
-      </group>
-
-      {/* 6. Curvaceous Sculpted VIP Armrest Consoles (Left & Right) */}
-      {/* Left Console */}
-      <group position={[-0.44, 0.40, 0]}>
-        {/* Solid Makassar Wood Main Body */}
-        <mesh position={[0, 0, 0]}>
-          <boxGeometry args={[0.12, 0.30, 0.52]} />
-          <meshStandardMaterial color="#160f0c" roughness={0.30} metalness={0.12} />
-        </mesh>
-        {/* Front Waterfall Rounded Nose Cylinder */}
-        <mesh position={[0, 0, -0.26]}>
-          <cylinderGeometry args={[0.06, 0.06, 0.30, 24]} />
-          <meshStandardMaterial color="#160f0c" roughness={0.30} metalness={0.12} />
-        </mesh>
-        {/* Rear Bullnose Cylinder */}
-        <mesh position={[0, 0, 0.26]}>
-          <cylinderGeometry args={[0.06, 0.06, 0.30, 24]} />
-          <meshStandardMaterial color="#160f0c" roughness={0.30} metalness={0.12} />
-        </mesh>
-
-        {/* Padded Stitched Leather Arm Cap */}
-        <mesh position={[0, 0.165, 0]}>
-          <boxGeometry args={[0.13, 0.04, 0.52]} />
-          <meshStandardMaterial color="#201511" roughness={0.42} metalness={0.08} />
-        </mesh>
-        {/* Front Rounded Leather Waterfall Roll */}
-        <mesh position={[0, 0.165, -0.26]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.065, 0.065, 0.13, 24]} />
-          <meshStandardMaterial color="#201511" roughness={0.42} metalness={0.08} />
-        </mesh>
-        {/* Rear Rounded Leather Roll */}
-        <mesh position={[0, 0.165, 0.26]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.065, 0.065, 0.13, 24]} />
-          <meshStandardMaterial color="#201511" roughness={0.42} metalness={0.08} />
-        </mesh>
-        {/* Gold Border Trim under Leather Pad */}
-        <mesh position={[0, 0.145, 0]}>
-          <boxGeometry args={[0.132, 0.006, 0.52]} />
-          <meshStandardMaterial color="#c9a86a" metalness={0.92} roughness={0.15} />
-        </mesh>
-      </group>
-
-      {/* Right Console */}
-      <group position={[0.44, 0.40, 0]}>
-        {/* Solid Makassar Wood Main Body */}
-        <mesh position={[0, 0, 0]}>
-          <boxGeometry args={[0.12, 0.30, 0.52]} />
-          <meshStandardMaterial color="#160f0c" roughness={0.30} metalness={0.12} />
-        </mesh>
-        {/* Front Waterfall Rounded Nose Cylinder */}
-        <mesh position={[0, 0, -0.26]}>
-          <cylinderGeometry args={[0.06, 0.06, 0.30, 24]} />
-          <meshStandardMaterial color="#160f0c" roughness={0.30} metalness={0.12} />
-        </mesh>
-        {/* Rear Bullnose Cylinder */}
-        <mesh position={[0, 0, 0.26]}>
-          <cylinderGeometry args={[0.06, 0.06, 0.30, 24]} />
-          <meshStandardMaterial color="#160f0c" roughness={0.30} metalness={0.12} />
-        </mesh>
-
-        {/* Padded Stitched Leather Arm Cap */}
-        <mesh position={[0, 0.165, 0]}>
-          <boxGeometry args={[0.13, 0.04, 0.52]} />
-          <meshStandardMaterial color="#201511" roughness={0.42} metalness={0.08} />
-        </mesh>
-        {/* Front Rounded Leather Waterfall Roll */}
-        <mesh position={[0, 0.165, -0.26]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.065, 0.065, 0.13, 24]} />
-          <meshStandardMaterial color="#201511" roughness={0.42} metalness={0.08} />
-        </mesh>
-        {/* Rear Rounded Leather Roll */}
-        <mesh position={[0, 0.165, 0.26]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.065, 0.065, 0.13, 24]} />
-          <meshStandardMaterial color="#201511" roughness={0.42} metalness={0.08} />
-        </mesh>
-        {/* Gold Border Trim under Leather Pad */}
-        <mesh position={[0, 0.145, 0]}>
-          <boxGeometry args={[0.132, 0.006, 0.52]} />
-          <meshStandardMaterial color="#c9a86a" metalness={0.92} roughness={0.15} />
-        </mesh>
-
-        {/* Inset Champagne Brass Cupholder with Inner Ambient Ring */}
-        <group position={[0, 0.19, -0.16]}>
-          {/* Beveled Brass Outer Rim */}
-          <mesh>
-            <cylinderGeometry args={[0.044, 0.044, 0.02, 20]} />
-            <meshStandardMaterial color="#dfc28d" metalness={0.95} roughness={0.12} />
-          </mesh>
-          {/* Dark Felt Well Interior */}
-          <mesh position={[0, 0.002, 0]}>
-            <cylinderGeometry args={[0.035, 0.035, 0.02, 20]} />
-            <meshStandardMaterial color="#120c0a" roughness={0.7} metalness={0.1} />
-          </mesh>
-          {/* Illuminated Amber Base Halo */}
-          <mesh position={[0, -0.007, 0]}>
-            <cylinderGeometry args={[0.033, 0.033, 0.005, 20]} />
-            <meshStandardMaterial color="#ffb040" emissive="#ff9420" emissiveIntensity={0.60} />
-          </mesh>
-        </group>
-
-        {/* VIP Recline & Audio Control Console on Inner Side (facing occupant) */}
-        <group position={[-0.061, 0.10, 0.06]}>
-          {/* Brushed Brass Beveled Plate */}
-          <mesh>
-            <boxGeometry args={[0.006, 0.045, 0.13]} />
-            <meshStandardMaterial color="#dfc28d" metalness={0.94} roughness={0.15} />
-          </mesh>
-          {/* Tactile Mini Brass Buttons */}
-          <mesh position={[-0.004, 0.010, -0.030]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.006, 0.006, 0.006, 12]} />
-            <meshStandardMaterial color="#f0dcb2" metalness={0.96} roughness={0.1} />
-          </mesh>
-          <mesh position={[-0.004, -0.010, -0.030]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.006, 0.006, 0.006, 12]} />
-            <meshStandardMaterial color="#f0dcb2" metalness={0.96} roughness={0.1} />
-          </mesh>
-          {/* Rotary Volume Dial */}
-          <mesh position={[-0.004, 0, 0.022]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.012, 0.012, 0.007, 16]} />
-            <meshStandardMaterial color="#c9a86a" metalness={0.95} roughness={0.15} />
-          </mesh>
-          {/* Tiny Amber Micro-LED status indicator */}
-          <mesh position={[-0.005, 0, -0.052]}>
-            <sphereGeometry args={[0.0025, 8, 8]} />
-            <meshStandardMaterial color="#ffc470" emissive="#ffa430" emissiveIntensity={1.0} />
-          </mesh>
-        </group>
-      </group>
-
-      {/* 7. Sweet Spot (Row F · Seat 07) Outer Brass Plaque & Welcoming Ambient Wash */}
-      {item.isSweetSpot && (
-        <group position={[0.51, 0.46, 0.10]}>
-          {/* Main Brushed Brass Plaque */}
+      {/* Sweet Spot VIP Plaque (Single badge) */}
+      {sweetSpot && (
+        <group position={[sweetSpot.pos.x + 0.50, sweetSpot.pos.y + 0.46, sweetSpot.pos.z + 0.10]}>
           <mesh>
             <boxGeometry args={[0.014, 0.08, 0.16]} />
             <meshStandardMaterial color="#dfc28d" metalness={0.96} roughness={0.12} />
           </mesh>
-          {/* Dark Inlay Plate */}
-          <mesh position={[0.008, 0, 0]}>
-            <boxGeometry args={[0.004, 0.068, 0.14]} />
-            <meshStandardMaterial color="#100c0a" roughness={0.3} metalness={0.2} />
+          <mesh position={[0.01, 0, 0]}>
+            <boxGeometry args={[0.002, 0.025, 0.12]} />
+            <meshStandardMaterial color="#ffdf9e" emissive="#ffa430" emissiveIntensity={0.6} metalness={0.9} />
           </mesh>
-          {/* Golden Lettering Bar */}
-          <mesh position={[0.010, 0, 0]}>
-            <boxGeometry args={[0.002, 0.022, 0.10]} />
-            <meshStandardMaterial color="#ffdf9e" metalness={0.95} roughness={0.1} />
-          </mesh>
-          {/* Welcoming Golden Halo Light */}
-          <pointLight intensity={0.7} distance={1.2} color="#f5c270" decay={1.8} />
         </group>
-      )}
-
-      {/* 8. Under-Seat Footwell Courtesy LED Glow */}
-      {isAisleSeat && (
-        <pointLight position={[item.col === 4 ? 0.32 : -0.32, 0.05, 0]} intensity={0.3} distance={1.0} color="#f5c270" decay={1.8} />
       )}
     </group>
   );
-}
+});
 
 export default function CinematicJourneyCanvas({
   progress,
+  progressRef,
   mousePos,
   activeFilmTitle = "NOCTURNE · SCREEN 04",
   themeColor = "#e7c28a",
@@ -536,14 +155,18 @@ export default function CinematicJourneyCanvas({
   const screenTexture04Ref = useRef<THREE.CanvasTexture | null>(null);
   const screenTexture05Ref = useRef<THREE.CanvasTexture | null>(null);
   const particlesRef = useRef<THREE.Points>(null);
-  const barSpotRef = useRef<THREE.SpotLight>(null);
   const leftDoorRef = useRef<THREE.Group>(null);
   const rightDoorRef = useRef<THREE.Group>(null);
   const doorLightSpillRef = useRef<THREE.MeshBasicMaterial>(null);
   const lookAtRef = useRef(new THREE.Vector3(0, 4.72, -12.5));
-  const barMuralRef = useRef<THREE.Mesh>(null);
+  const lookTargetVec = useRef(new THREE.Vector3(0, 4.72, -12.5));
+  const mouseDampedRef = useRef({ x: 0, y: 0 });
   const corridorPoster1Ref = useRef<THREE.Mesh>(null);
   const corridorPoster2Ref = useRef<THREE.Mesh>(null);
+  const videoRefs = useRef<{
+    v04: HTMLVideoElement | null;
+    v05: HTMLVideoElement | null;
+  }>({ v04: null, v05: null });
 
   // Generate seats in the main auditorium (Zone A) with tiered rake
   const seatsZoneA = useMemo(() => {
@@ -597,17 +220,6 @@ export default function CinematicJourneyCanvas({
   // Load Flow-generated Photorealistic & Veo 3.1 Video Textures
   useEffect(() => {
     const loader = new THREE.TextureLoader();
-
-    // 1. Initial High-Res Film Still Fallbacks
-    loader.load("/films/high-porch-bar.jpg", (tex) => {
-      tex.colorSpace = THREE.SRGBColorSpace;
-      if (barMuralRef.current && !barMuralRef.current.userData.hasVideo) {
-        barMuralRef.current.material = new THREE.MeshBasicMaterial({
-          map: tex,
-          side: THREE.DoubleSide,
-        });
-      }
-    });
 
     // Dedicated high-resolution vertical cinematic marquee posters for the VIP Gallery
     loader.load("/films/poster-cosmic-voyage.jpg", (tex) => {
@@ -680,6 +292,7 @@ export default function CinematicJourneyCanvas({
 
     // 2. Video 1: Screen 04 Master Trailer (/films/cosmic-voyage.mp4)
     const res04 = setupVideo("/films/cosmic-voyage.mp4", (vTex) => {
+      videoRefs.current.v04 = res04.vid;
       vTex.repeat.set(1.0, 0.68);
       vTex.offset.set(0.0, 0.16);
       if (screen04Ref.current) {
@@ -688,19 +301,9 @@ export default function CinematicJourneyCanvas({
       }
     });
 
-    // 3. Video 2: High Porch Provisions Bar Living Mural (/films/high-porch-bar.mp4)
-    const resBar = setupVideo("/films/high-porch-bar.mp4", (vTex) => {
-      if (barMuralRef.current) {
-        barMuralRef.current.material = new THREE.MeshBasicMaterial({
-          map: vTex,
-          side: THREE.DoubleSide,
-        });
-        barMuralRef.current.userData.hasVideo = true;
-      }
-    });
-
-    // 4. Video 3: Screen 05 Premiere Suite Director's Master (/films/neo-tokyo-premiere.mp4)
+    // 3. Video 2: Screen 05 Premiere Suite Director's Master (/films/neo-tokyo-premiere.mp4)
     const res05 = setupVideo("/films/neo-tokyo-premiere.mp4", (vTex) => {
+      videoRefs.current.v05 = res05.vid;
       if (screen05Ref.current) {
         screen05Ref.current.material = new THREE.MeshBasicMaterial({
           map: vTex,
@@ -714,8 +317,6 @@ export default function CinematicJourneyCanvas({
     return () => {
       res04.vid.pause();
       res04.vTex.dispose();
-      resBar.vid.pause();
-      resBar.vTex.dispose();
       res05.vid.pause();
       res05.vTex.dispose();
     };
@@ -789,7 +390,7 @@ export default function CinematicJourneyCanvas({
     timeRef.current += delta;
 
     const cam = state.camera;
-    const p = THREE.MathUtils.clamp(progress, 0, 1);
+    const p = THREE.MathUtils.clamp(progressRef?.current !== undefined ? progressRef.current : (progress ?? 0), 0, 1);
 
     // Continuous 4-Stage Collision-Free Cinematic Camera Kinematics:
     // Stage 1 (0.00 - 0.25): Foyer -> Center Aisle (X: 0.0, Z: 19.0 -> 12.0)
@@ -845,7 +446,7 @@ export default function CinematicJourneyCanvas({
         camTargetY = THREE.MathUtils.lerp(1.55, 1.30, ease);
         camTargetZ = THREE.MathUtils.lerp(12.0, 6.45, ease);
         lookTargetX = 0.0;
-        lookTargetY = 4.60;
+        lookTargetY = THREE.MathUtils.lerp(4.72, 4.60, ease);
         lookTargetZ = -12.5;
       } else if (p < 0.42) {
         // Sub-phase 2B (0.36 - 0.42): Sidestep smoothly into Seat F-07 and settle into cushion
@@ -894,40 +495,40 @@ export default function CinematicJourneyCanvas({
         lookTargetY = THREE.MathUtils.lerp(1.75, 1.65, ease);
         lookTargetZ = THREE.MathUtils.lerp(2.0, 1.4, ease);
       } else if (p < 0.66) {
-        // Sub-phase 3C (0.60 - 0.66): Glide through open doors across bridge onto High Porch deck at eye level
+        // Sub-phase 3C (0.60 - 0.66): Glide through open doors across bridge onto Cinema Snack Stand plaza
         const t = (p - 0.60) / (0.66 - 0.60);
         const ease = t * t * (3 - 2 * t);
-        camTargetX = THREE.MathUtils.lerp(4.6, 9.5, ease);
-        camTargetY = THREE.MathUtils.lerp(1.72, 1.75, ease);
-        camTargetZ = THREE.MathUtils.lerp(2.0, 1.4, ease);
-        lookTargetX = THREE.MathUtils.lerp(9.5, 13.1, ease);
-        lookTargetY = THREE.MathUtils.lerp(1.65, 1.25, ease);
-        lookTargetZ = THREE.MathUtils.lerp(1.4, -0.2, ease);
+        camTargetX = THREE.MathUtils.lerp(4.6, 8.75, ease);
+        camTargetY = THREE.MathUtils.lerp(1.72, 1.76, ease);
+        camTargetZ = THREE.MathUtils.lerp(2.0, 1.25, ease);
+        lookTargetX = THREE.MathUtils.lerp(9.5, 13.05, ease);
+        lookTargetY = THREE.MathUtils.lerp(1.65, 1.54, ease);
+        lookTargetZ = THREE.MathUtils.lerp(1.4, 0.06, ease);
       } else {
-        // Sub-phase 3D (0.66 - 0.73): Standing on High Porch Veranda overlooking vintage marble bar
-        camTargetX = 9.5;
-        camTargetY = 1.75;
-        camTargetZ = 1.4;
-        lookTargetX = 13.1;
-        lookTargetY = 1.25;
-        lookTargetZ = -0.2;
+        // Sub-phase 3D (0.66 - 0.73): Standing before the 3D Cinema Snack Stand (Popcorn machine, lady attendant, puffs & rolls)
+        camTargetX = 8.75;
+        camTargetY = 1.76;
+        camTargetZ = 1.25;
+        lookTargetX = 13.05;
+        lookTargetY = 1.54;
+        lookTargetZ = 0.06;
       }
     } else {
       // -------------------------------------------------------------
       // Stage 4 (0.73 - 1.00): VIP Gallery Corridor -> Screen 05 Premiere Suite
       // -------------------------------------------------------------
       if (p < 0.84) {
-        // Sub-phase 4A (0.73 - 0.84): Walk from High Porch down VIP corridor towards illuminated portal
+        // Sub-phase 4A (0.73 - 0.84): Walk from Snack Stand down VIP corridor towards illuminated portal
         const t = (p - 0.73) / (0.84 - 0.73);
         const ease = t * t * (3 - 2 * t);
-        camTargetX = 9.8;
-        camTargetY = 1.72;
-        camTargetZ = THREE.MathUtils.lerp(1.4, -17.5, ease);
+        camTargetX = THREE.MathUtils.lerp(8.75, 9.8, ease);
+        camTargetY = THREE.MathUtils.lerp(1.76, 1.72, ease);
+        camTargetZ = THREE.MathUtils.lerp(1.25, -17.5, ease);
 
-        // Gaze turns from bar down the hall, then gracefully angles toward the glowing VIP Suite entrance
-        lookTargetX = THREE.MathUtils.lerp(12.0, 0.0, ease);
-        lookTargetY = THREE.MathUtils.lerp(1.72, 3.2, ease);
-        lookTargetZ = THREE.MathUtils.lerp(0.0, -29.0, ease);
+        // Gaze turns smoothly from snack stand down the hall, then gracefully angles toward the glowing VIP Suite entrance
+        lookTargetX = THREE.MathUtils.lerp(13.05, 0.0, ease);
+        lookTargetY = THREE.MathUtils.lerp(1.54, 3.2, ease);
+        lookTargetZ = THREE.MathUtils.lerp(0.06, -29.0, ease);
       } else if (p < 0.92) {
         // Sub-phase 4B (0.84 - 0.92): Step through VIP archway into the grand Director's Suite
         const t = (p - 0.84) / (0.92 - 0.84);
@@ -936,9 +537,9 @@ export default function CinematicJourneyCanvas({
         camTargetY = THREE.MathUtils.lerp(1.72, 1.65, ease);
         camTargetZ = THREE.MathUtils.lerp(-17.5, -21.0, ease);
 
-        // Gaze remains locked dead-center onto Screen 05
+        // Gaze gracefully transitions up towards Screen 05 center
         lookTargetX = 0.0;
-        lookTargetY = 4.72;
+        lookTargetY = THREE.MathUtils.lerp(3.2, 4.72, ease);
         lookTargetZ = -29.0;
       } else {
         // Sub-phase 4C (0.92 - 1.00): Seated in VIP Director's Row facing Screen 05 directly
@@ -951,36 +552,51 @@ export default function CinematicJourneyCanvas({
       }
     }
 
-    // Add mouse parallax
-    // When seated in the sweet spot (Stage 2: 0.38 - 0.48), gently attenuate mouse sway so viewer stays in their seat
+    // Damped mouse parallax: silky-smooth steadicam sway, zero twitch or wall clipping
     const isSweetSpotOccupied = p >= 0.38 && p <= 0.48;
-    const mouseScaleX = isSweetSpotOccupied ? 0.12 : 0.45;
-    const mouseScaleY = isSweetSpotOccupied ? 0.08 : 0.22;
-    const mouseInfluenceX = mousePos.x * mouseScaleX;
-    const mouseInfluenceY = mousePos.y * mouseScaleY;
+    const mouseScaleX = isSweetSpotOccupied ? 0.03 : 0.08;
+    const mouseScaleY = isSweetSpotOccupied ? 0.02 : 0.04;
+    const rawPointerX = mousePos ? mousePos.x : state.pointer.x;
+    const rawPointerY = mousePos ? mousePos.y : state.pointer.y;
 
-    // Fluid steadicam position damping
-    cam.position.x += (camTargetX + mouseInfluenceX - cam.position.x) * 0.085;
-    cam.position.y += (camTargetY + mouseInfluenceY - cam.position.y) * 0.085;
-    cam.position.z += (camTargetZ - cam.position.z) * 0.085;
+    // Filter and exponentially damp raw mouse coordinates
+    const mouseSmooth = 1 - Math.exp(-4.0 * delta);
+    mouseDampedRef.current.x = THREE.MathUtils.lerp(mouseDampedRef.current.x, rawPointerX, mouseSmooth);
+    mouseDampedRef.current.y = THREE.MathUtils.lerp(mouseDampedRef.current.y, rawPointerY, mouseSmooth);
 
-    // Damped steadicam orientation tracking (eliminates angular snaps)
-    lookAtRef.current.lerp(new THREE.Vector3(lookTargetX, lookTargetY, lookTargetZ), 0.085);
+    const mouseInfluenceX = mouseDampedRef.current.x * mouseScaleX;
+    const mouseInfluenceY = mouseDampedRef.current.y * mouseScaleY;
+
+    // Zone-aware video decode management (only decodes the active screen)
+    const { v04, v05 } = videoRefs.current;
+    if (v04 && v05) {
+      if (p < 0.48) {
+        if (v04.paused) v04.play().catch(() => {});
+        if (!v05.paused) v05.pause();
+      } else if (p < 0.74) {
+        if (!v04.paused) v04.pause();
+        if (!v05.paused) v05.pause();
+      } else {
+        if (!v04.paused) v04.pause();
+        if (v05.paused) v05.play().catch(() => {});
+      }
+    }
+
+    // Fluid frame-rate-independent steadicam exponential damping
+    const smoothFactor = 1 - Math.exp(-6.5 * delta);
+    cam.position.x = THREE.MathUtils.lerp(cam.position.x, camTargetX + mouseInfluenceX, smoothFactor);
+    cam.position.y = THREE.MathUtils.lerp(cam.position.y, camTargetY + mouseInfluenceY, smoothFactor);
+    cam.position.z = THREE.MathUtils.lerp(cam.position.z, camTargetZ, smoothFactor);
+
+    // Damped steadicam orientation tracking (zero GC allocation, stable rotation authority)
+    lookTargetVec.current.set(lookTargetX, lookTargetY, lookTargetZ);
+    lookAtRef.current.lerp(lookTargetVec.current, smoothFactor);
     cam.lookAt(lookAtRef.current);
 
-    // Subtle natural banking roll during turns
-    const targetRoll = (camTargetX - cam.position.x) * -0.018;
-    cam.rotation.z = THREE.MathUtils.lerp(cam.rotation.z, targetRoll, 0.08);
-
-    // Dust particles drift
+    // Dust particles drift (pure GPU transform, zero buffer re-upload)
     if (particlesRef.current) {
-      const arr = particlesRef.current.geometry.attributes.position.array as Float32Array;
-      for (let i = 0; i < arr.length; i += 3) {
-        arr[i + 1] += delta * 0.035;
-        arr[i] += Math.sin(timeRef.current * 0.5 + i) * delta * 0.015;
-        if (arr[i + 1] > 8.5) arr[i + 1] = 0.5;
-      }
-      particlesRef.current.geometry.attributes.position.needsUpdate = true;
+      particlesRef.current.rotation.y = timeRef.current * 0.015;
+      particlesRef.current.position.y = Math.sin(timeRef.current * 0.25) * 0.2;
     }
   });
 
@@ -1004,6 +620,7 @@ export default function CinematicJourneyCanvas({
 
       {/* Screen 04 Rim Light */}
       <pointLight position={[0, 4.72, -12]} intensity={1.8} distance={22} color="#e7c28a" />
+      <pointLight position={[0, 8.5, 6.0]} intensity={4.5} distance={30} color="#ffa43b" decay={1.4} />
 
       {/* Art Deco Architectural Wall Sconces (Left Auditorium Wall) */}
       {[-8.0, -3.0, 2.0, 7.0, 12.0, 17.0].map((zPos, idx) => (
@@ -1024,7 +641,7 @@ export default function CinematicJourneyCanvas({
             <cylinderGeometry args={[0.045, 0.058, 0.08, 16]} />
             <meshStandardMaterial color="#dfc28d" metalness={0.95} roughness={0.15} />
           </mesh>
-          <pointLight position={[0.2, 0, 0]} intensity={3.6} distance={7.5} color="#ffa43b" decay={1.5} />
+          
         </group>
       ))}
 
@@ -1047,7 +664,7 @@ export default function CinematicJourneyCanvas({
             <cylinderGeometry args={[0.045, 0.058, 0.08, 16]} />
             <meshStandardMaterial color="#dfc28d" metalness={0.95} roughness={0.15} />
           </mesh>
-          <pointLight position={[-0.2, 0, 0]} intensity={3.6} distance={7.5} color="#ffa43b" decay={1.5} />
+          
         </group>
       ))}
 
@@ -1070,7 +687,7 @@ export default function CinematicJourneyCanvas({
                 <circleGeometry args={[0.09, 20]} />
                 <meshBasicMaterial color="#fff0d0" />
               </mesh>
-              <pointLight position={[0, 0.35, 0.08]} intensity={3.4} distance={5.5} color="#ffbe6b" decay={1.4} />
+              
             </group>
           );
         })}
@@ -1100,7 +717,7 @@ export default function CinematicJourneyCanvas({
                 <circleGeometry args={[0.11, 20]} />
                 <meshBasicMaterial color="#ffe2b0" />
               </mesh>
-              <pointLight position={[0, -0.3, 0]} intensity={4.2} distance={8.5} color="#ffa43b" decay={1.5} />
+              
             </group>
           </group>
         ))}
@@ -1379,10 +996,8 @@ export default function CinematicJourneyCanvas({
         ))}
       </group>
 
-      {/* Velvet Luxury Lounger Seats in Orchestra with Tiered Rake */}
-      {seatsZoneA.map((item, idx) => (
-        <LuxuryCinemaSeat key={idx} item={item} />
-      ))}
+      {/* Velvet Luxury Lounger Seats in Orchestra with Tiered Rake (Instanced 6 draw calls) */}
+      <InstancedCinemaSeats seats={seatsZoneA} />
 
       {/* Reflective Acoustic Marble Floor */}
       <mesh position={[0, -0.02, 5.0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -1637,213 +1252,12 @@ export default function CinematicJourneyCanvas({
           </group>
         ))}
 
-        {/* Warm Vintage Porch Ambient Floodlights */}
-        <pointLight position={[0.6, 3.4, 0]} intensity={22} distance={14} color="#ffbe6b" decay={1.3} />
-        <pointLight position={[-1.2, 3.2, 0]} intensity={18} distance={12} color="#ffa43b" decay={1.4} />
-        <pointLight position={[0.6, 3.4, -2.4]} intensity={16} distance={10} color="#ffdfab" decay={1.3} />
-        <pointLight position={[0.6, 3.4, 2.4]} intensity={16} distance={10} color="#ffdfab" decay={1.3} />
+        {/* Warm Vintage Concessions Ambient Floodlights */}
+        <pointLight position={[0.4, 3.4, 0]} intensity={12} distance={14} color="#ffbe6b" decay={1.4} />
+        <pointLight position={[-1.4, 3.1, 0.2]} intensity={10} distance={12} color="#ffa43b" decay={1.4} />
 
-        {/* Vintage Calacatta Marble Bar & Food Counter with Curvaceous Semicircular Ends */}
-        <group position={[0.6, 0.12, 0]}>
-          {/* Fluted Dark Mahogany Counter Base with Rounded Semicircular Ends */}
-          <group position={[0, 0.52, 0]}>
-            {/* Center Base Box */}
-            <mesh>
-              <boxGeometry args={[1.35, 1.04, 6.2]} />
-              <meshStandardMaterial color="#221510" roughness={0.42} metalness={0.2} />
-            </mesh>
-            {/* Semicircular Rounded Mahogany Ends */}
-            {[-3.1, 3.1].map((endZ, ei) => (
-              <mesh key={`bar-end-base-${ei}`} position={[0, 0, endZ]} rotation={[0, ei === 0 ? Math.PI : 0, 0]}>
-                <cylinderGeometry args={[0.675, 0.675, 1.04, 28, 1, false, -Math.PI / 2, Math.PI]} />
-                <meshStandardMaterial color="#221510" roughness={0.42} metalness={0.2} />
-              </mesh>
-            ))}
-            {/* Vertical Fluted Tambour Reeding Slats on Bar Apron */}
-            {Array.from({ length: 18 }).map((_, si) => {
-              const slatZ = -2.8 + si * 0.33;
-              return (
-                <mesh key={`slat-${si}`} position={[-0.68, 0, slatZ]}>
-                  <cylinderGeometry args={[0.016, 0.016, 1.02, 12]} />
-                  <meshStandardMaterial color="#1a0f0a" roughness={0.5} metalness={0.15} />
-                </mesh>
-              );
-            })}
-          </group>
-
-          {/* Calacatta Gold Marble Slab Countertop with Semicircular Bullnose Ends */}
-          <group position={[0, 1.07, 0]}>
-            {/* Center Marble Slab */}
-            <mesh>
-              <boxGeometry args={[1.55, 0.07, 6.2]} />
-              <meshStandardMaterial color="#f0eae0" roughness={0.2} metalness={0.12} />
-            </mesh>
-            {/* Semicircular Rounded Marble Ends */}
-            {[-3.1, 3.1].map((endZ, ei) => (
-              <mesh key={`bar-end-top-${ei}`} position={[0, 0, endZ]} rotation={[0, ei === 0 ? Math.PI : 0, 0]}>
-                <cylinderGeometry args={[0.775, 0.775, 0.07, 28, 1, false, -Math.PI / 2, Math.PI]} />
-                <meshStandardMaterial color="#f0eae0" roughness={0.2} metalness={0.12} />
-              </mesh>
-            ))}
-            {/* Continuous Polished Brass Bullnose Edge Trim */}
-            <mesh position={[-0.78, 0, 0]}>
-              <boxGeometry args={[0.025, 0.075, 6.2]} />
-              <meshStandardMaterial color="#c9a86a" metalness={0.95} roughness={0.14} />
-            </mesh>
-          </group>
-
-          {/* Continuous Curved Brass Footrail with Wraparound Semicircular Ends */}
-          <group position={[-0.78, 0.2, 0]}>
-            <mesh rotation={[Math.PI / 2, 0, 0]}>
-              <cylinderGeometry args={[0.025, 0.025, 6.2, 16]} />
-              <meshStandardMaterial color="#d4af37" metalness={0.95} roughness={0.15} />
-            </mesh>
-          </group>
-
-          {/* VINTAGE FOOD DISPLAY: Pastry Cloche, Tiered Stand, Champagne Bucket, Espresso Machine */}
-          {/* 1. Glass Pastry Cloche with artisanal cinema confections */}
-          <group position={[-0.1, 1.11, 2.2]}>
-            <mesh position={[0, 0.015, 0]}>
-              <cylinderGeometry args={[0.22, 0.22, 0.025, 24]} />
-              <meshStandardMaterial color="#1a1412" roughness={0.3} metalness={0.4} />
-            </mesh>
-            {/* Cloche Glass Dome */}
-            <mesh position={[0, 0.2, 0]}>
-              <sphereGeometry args={[0.2, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
-              <meshStandardMaterial color="#ffffff" transparent opacity={0.4} roughness={0.05} metalness={0.1} />
-            </mesh>
-            {/* Brass Finial */}
-            <mesh position={[0, 0.41, 0]}>
-              <sphereGeometry args={[0.025, 12, 12]} />
-              <meshStandardMaterial color="#c9a86a" metalness={0.95} roughness={0.1} />
-            </mesh>
-            {/* Artisanal Truffles inside */}
-            {[-0.06, 0.06].map((x, xi) => (
-              <mesh key={xi} position={[x, 0.05, 0]}>
-                <sphereGeometry args={[0.035, 12, 12]} />
-                <meshStandardMaterial color="#2d1016" roughness={0.8} />
-              </mesh>
-            ))}
-          </group>
-
-          {/* 2. Three-Tiered Antique Brass Provisions Stand */}
-          <group position={[-0.1, 1.11, 0.6]}>
-            <mesh position={[0, 0.01, 0]}>
-              <cylinderGeometry args={[0.22, 0.22, 0.015, 24]} />
-              <meshStandardMaterial color="#c9a86a" metalness={0.9} roughness={0.2} />
-            </mesh>
-            <mesh position={[0, 0.16, 0]}>
-              <cylinderGeometry args={[0.16, 0.16, 0.015, 24]} />
-              <meshStandardMaterial color="#c9a86a" metalness={0.9} roughness={0.2} />
-            </mesh>
-            <mesh position={[0, 0.30, 0]}>
-              <cylinderGeometry args={[0.11, 0.11, 0.015, 24]} />
-              <meshStandardMaterial color="#c9a86a" metalness={0.9} roughness={0.2} />
-            </mesh>
-            <mesh position={[0, 0.18, 0]}>
-              <cylinderGeometry args={[0.012, 0.012, 0.38, 12]} />
-              <meshStandardMaterial color="#c9a86a" metalness={0.95} roughness={0.1} />
-            </mesh>
-          </group>
-
-          {/* 3. Antique Hammered Brass Champagne Bucket with Vintage Brut */}
-          <group position={[-0.1, 1.11, -1.0]}>
-            <mesh position={[0, 0.14, 0]}>
-              <cylinderGeometry args={[0.18, 0.14, 0.28, 20]} />
-              <meshStandardMaterial color="#c9a86a" roughness={0.25} metalness={0.88} />
-            </mesh>
-            {/* Bottles with gold foil necks */}
-            {[-0.05, 0.05].map((bx, bi) => (
-              <group key={bi} position={[bx, 0.24, 0]} rotation={[0, 0, (bi - 0.5) * 0.15]}>
-                <mesh>
-                  <cylinderGeometry args={[0.04, 0.04, 0.26, 16]} />
-                  <meshStandardMaterial color="#0e2412" roughness={0.15} />
-                </mesh>
-                <mesh position={[0, 0.14, 0]}>
-                  <cylinderGeometry args={[0.018, 0.024, 0.1, 16]} />
-                  <meshStandardMaterial color="#dfc28d" roughness={0.2} metalness={0.85} />
-                </mesh>
-              </group>
-            ))}
-          </group>
-
-          {/* 4. Classic Vintage Art Deco Brass Espresso & Concessions Machine */}
-          <group position={[-0.1, 1.11, -2.6]}>
-            {/* Machine Sculpted Cylindrical Boiler Body */}
-            <mesh position={[0, 0.22, 0]}>
-              <cylinderGeometry args={[0.22, 0.24, 0.44, 28]} />
-              <meshStandardMaterial color="#d4af37" metalness={0.92} roughness={0.15} />
-            </mesh>
-            {/* Polished Brass Beveled Base Plinth Ring */}
-            <mesh position={[0, 0.02, 0]}>
-              <cylinderGeometry args={[0.26, 0.27, 0.04, 28]} />
-              <meshStandardMaterial color="#dfc28d" metalness={0.95} roughness={0.12} />
-            </mesh>
-            {/* Antique Dome Top */}
-            <mesh position={[0, 0.44, 0]}>
-              <sphereGeometry args={[0.22, 20, 20, 0, Math.PI * 2, 0, Math.PI / 2]} />
-              <meshStandardMaterial color="#d4af37" metalness={0.95} roughness={0.1} />
-            </mesh>
-            {/* Art Deco Crown Finial on top */}
-            <mesh position={[0, 0.66, 0]}>
-              <sphereGeometry args={[0.035, 16, 16]} />
-              <meshStandardMaterial color="#dfc28d" metalness={0.95} roughness={0.1} />
-            </mesh>
-            {/* Dual Brass Portafilters */}
-            {[-0.12, 0.12].map((pz, pi) => (
-              <mesh key={pi} position={[-0.24, 0.16, pz]} rotation={[0, 0, Math.PI / 2]}>
-                <cylinderGeometry args={[0.02, 0.02, 0.12, 12]} />
-                <meshStandardMaterial color="#1a1412" roughness={0.3} />
-              </mesh>
-            ))}
-          </group>
-        </group>
-
-        {/* Vintage Swivel Barstools with Oxblood Leather (along porch counter) */}
-        {[-2.0, 0.0, 2.0].map((zPos, i) => (
-          <group key={i} position={[-0.6, 0.12, zPos]}>
-            {/* Circular Tufted Oxblood Leather Cushion */}
-            <mesh position={[0, 0.65, 0]}>
-              <cylinderGeometry args={[0.22, 0.22, 0.1, 24]} />
-              <meshStandardMaterial color="#54121a" roughness={0.62} metalness={0.08} />
-            </mesh>
-            {/* Brass Nailhead Trim Ring */}
-            <mesh position={[0, 0.69, 0]}>
-              <cylinderGeometry args={[0.23, 0.23, 0.015, 24]} />
-              <meshStandardMaterial color="#c9a86a" metalness={0.9} roughness={0.2} />
-            </mesh>
-            {/* Swivel Stem */}
-            <mesh position={[0, 0.32, 0]}>
-              <cylinderGeometry args={[0.03, 0.04, 0.64, 12]} />
-              <meshStandardMaterial color="#161414" metalness={0.8} roughness={0.3} />
-            </mesh>
-            {/* Brass Circular Foot Ring */}
-            <mesh position={[0, 0.2, 0]}>
-              <cylinderGeometry args={[0.18, 0.18, 0.02, 16, 1, true]} />
-              <meshStandardMaterial color="#c9a86a" metalness={0.9} roughness={0.2} />
-            </mesh>
-            {/* Heavy Cast Iron Base */}
-            <mesh position={[0, 0.02, 0]}>
-              <cylinderGeometry args={[0.2, 0.22, 0.04, 20]} />
-              <meshStandardMaterial color="#141416" metalness={0.85} roughness={0.25} />
-            </mesh>
-          </group>
-        ))}
-
-        {/* Vintage Mahogany Back-Bar Cabinet with Backlit Mirrors & Live Veo 3.1 Video Mural */}
-        <group position={[2.1, 0.12, 0]}>
-          <mesh position={[0, 1.45, 0]}>
-            <boxGeometry args={[0.45, 2.9, 7.8]} />
-            <meshStandardMaterial color="#1a120e" roughness={0.4} metalness={0.2} />
-          </mesh>
-          {/* Photorealistic High Porch Back-Bar Live Veo 3.1 Moving Video Mural (Mounted on Front Face) */}
-          <mesh ref={barMuralRef} position={[-0.235, 1.45, 0]} rotation={[0, -Math.PI / 2, 0]}>
-            <planeGeometry args={[7.4, 2.6]} />
-            <meshBasicMaterial color="#ffffff" side={THREE.DoubleSide} />
-          </mesh>
-          {/* Amber Ambient Cabinet Glow */}
-          <pointLight position={[-0.4, 1.6, 0]} intensity={3.2} distance={8} color="#ffa947" />
-        </group>
+        {/* Complete 3D Cinema Snack Stand (Popcorn Machine, Lady Attendant, Puffs, Rolls, Menu Board) */}
+        <CinemaSnackStand3D />
       </group>
 
       {/* ============================================================ */}
